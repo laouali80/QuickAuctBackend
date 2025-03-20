@@ -13,13 +13,16 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['userId','first_name', 'last_name', 'email', 'phone_number']
+        fields = ['userId','first_name', 'last_name', 'email', 'phone_number', 'thumbnail']
 
 class RegisterUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'username', 'email', 'password']
-        extra_kwargs = {'password': {'write_only': True},
+        extra_kwargs = {'password': {
+            # Ensure that when serializing, this field will be excluded
+            'write_only': True
+            },
                         'first_name': {'error_messages': {'blank': 'must not be null.'}},
                         'last_name': {'error_messages': {'blank': 'must not be null.'}},
                         'username': {'error_messages': {'blank': 'must not be null.'}},
@@ -27,14 +30,14 @@ class RegisterUserSerializer(serializers.ModelSerializer):
                         'password': {'error_messages': {'blank': 'must not be null.'}},
                         }
 
-
+    # this function is called when we want to save the serialize user with the data(validated_data)
     def create(self, validated_data):
         print(validated_data)
         try:
             user = User.objects.create(
-                username=validated_data['username'],
-                first_name=validated_data['first_name'],
-                last_name=validated_data['last_name'],
+                username=validated_data['username'].lower(),
+                first_name=validated_data['first_name'].lower(),
+                last_name=validated_data['last_name'].lower(),
                 email=validated_data['email'],
                 password=validated_data['password'],  # Automatically hashed
             )

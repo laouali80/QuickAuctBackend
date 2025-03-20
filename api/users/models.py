@@ -2,6 +2,9 @@ from django.db import models
 import uuid
 from .custom import CustomUser 
 from django.contrib.auth.hashers import make_password
+from .utils import upload_thumbnail
+
+
 # Create your models here.
 
 class User(models.Model):
@@ -12,7 +15,7 @@ class User(models.Model):
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15)
     password = models.CharField(max_length=128)
-    # picture = models.ImageField(default='', upload_to='profile_pics')
+    thumbnail = models.ImageField(default='assets/default.png', upload_to=upload_thumbnail, null=True,blank=True)
     aggrement = models.BooleanField(default=False)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
