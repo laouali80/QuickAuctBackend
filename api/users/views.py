@@ -29,17 +29,24 @@ def register_user(request):
             
             user = serializer.save()
             refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
+            # access_token = str(refresh.access_token)
             user_data = UserSerializer(user).data
  
-
+                # {
+                # "status": "success",
+                # "message": "Registration successful",
+                # "data": {
+                #     "accessToken": access_token,
+                #     "user": user_data
+                #     }
+                # }, status=status.HTTP_201_CREATED
             
             return Response({
-                "status": "success",
-                "message": "Registration successful",
-                "data": {
-                    "accessToken": access_token,
-                    "user": user_data
+                    
+                    "user": user_data,
+                    "tokens":{
+                        "access": str(refresh.access_token),
+                        'refresh': str(refresh)
                     }
                 }, status=status.HTTP_201_CREATED)
             
@@ -74,6 +81,7 @@ def login(request):
         
         
         if user is not None:
+            # RefreshToken allows us to create a token for a user
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
             # print(access_token)

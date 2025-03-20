@@ -28,8 +28,23 @@ SECRET_KEY = 'django-insecure-rnjbe!#s-616^pt%wb%ej+mr9ikvpb*e$8^&=+d!k8u7!f!w)c
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
 
+# ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = [ 
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+#     "http://10.0.2.2:3000",  # Android emulator
+# ]
+
+ALLOWED_HOSTS = ['localhost','10.0.2.2']  # Not recommended for production!
+
+# CORS_ALLOWED_ORIGIN_REGEXES = [
+#     r"^https://.*\.loca\.lt$",  # Expo Tunnel
+#     r"^https://.*\.ngrok\.io$",  # ngrok
+# ]
+
+# CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all origins
+# CORS_ALLOW_CREDENTIALS = True  # Required for authentication
 
 # Application definition
 
@@ -37,15 +52,21 @@ INSTALLED_APPS = [
     'api',
     
     'rest_framework',
+    
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -54,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 
 ROOT_URLCONF = 'auctionBackend.urls'
 

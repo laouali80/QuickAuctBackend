@@ -18,3 +18,6 @@ creation
 "email": "test@gmail.com",
 "password": "test"
 }
+
+A JSON Web Token authentication plugin for the Django REST Framework.
+https://django-rest-framework-simplejwt.readthedocs.io/en/latest/
