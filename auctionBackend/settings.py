@@ -34,9 +34,10 @@ DEBUG = True
 #     "http://localhost:3000",
 #     "http://127.0.0.1:3000",
 #     "http://10.0.2.2:3000",  # Android emulator
+# 'http://localhost:8081/'
 # ]
 
-ALLOWED_HOSTS = ['localhost','10.0.2.2']  # Not recommended for production!
+ALLOWED_HOSTS = ['localhost','10.0.2.2', '10.3.80.26','127.0.0.1']  # Not recommended for production!
 
 # CORS_ALLOWED_ORIGIN_REGEXES = [
 #     r"^https://.*\.loca\.lt$",  # Expo Tunnel
@@ -48,7 +49,31 @@ ALLOWED_HOSTS = ['localhost','10.0.2.2']  # Not recommended for production!
 
 # Application definition
 
+# ALLOWED_HOSTS = ['*']  # Accepts all hosts (not for production!)
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8081",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+
+# Daphne
+ASGI_APPLICATION = 'auctionBackend.asgi.application'
+
+# Channels config
+CHANNEL_LAYERS = {
+    'default':{
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG':{
+            'hosts': [('127.0.0.1', 6379)]
+        }
+    }
+}
+
+
 INSTALLED_APPS = [
+    'daphne',
     'api',
     
     'rest_framework',

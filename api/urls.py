@@ -1,9 +1,10 @@
 from django.urls import path, include
 
 
-urlpatterns = [    
+urlpatterns = [   
+    path('users/', include('api.users.urls')), 
     path('auctions/', include('api.auctions.urls')),
-    path('users/', include('api.users.urls')),
+    path('chats/', include('api.chats.urls')),
 ]
 
 

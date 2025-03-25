@@ -14,7 +14,7 @@ from rest_framework import status
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def welcome(request):
-    return Response({'status':'reach'}, status=status.HTTP_201_CREATED)
+    return redirect('register')
 
 @api_view(['GET','POST'])
 @permission_classes([AllowAny])
@@ -22,7 +22,7 @@ def register_user(request):
     """Register a user."""
     
     if request.method == "POST":
-        # print(request.data)
+        
         serializer = RegisterUserSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -68,7 +68,7 @@ def register_user(request):
                     "statusCode": 400
                 }, status=status.HTTP_400_BAD_REQUEST)
     
-@api_view(['POST'])
+@api_view(['GET','POST'])
 @permission_classes([AllowAny])
 def login(request):
     """Logs in a user and returns a JWT access token."""
@@ -76,8 +76,7 @@ def login(request):
     if request.method == "POST":
         email = request.data.get('email')
         password = request.data.get('password')
-        
- 
+
         user = authenticate(request, email=email, password=password)
         
         
