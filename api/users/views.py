@@ -74,8 +74,10 @@ def login(request):
     """Logs in a user and returns a JWT access token."""
 
     if request.method == "POST":
+
         email = request.data.get('email')
         password = request.data.get('password')
+        # print(email, password)
         
  
         user = authenticate(request, email=email, password=password)
