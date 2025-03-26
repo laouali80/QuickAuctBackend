@@ -8,6 +8,12 @@ from .serializers import UserSerializer, RegisterUserSerializer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
+from django.core.mail import send_mail
+from django.conf import settings
+import pyotp
+from datetime import datetime, timedelta
+
+
 
 # Create your views here.
 
@@ -114,3 +120,36 @@ def login(request):
 
 
 
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_otp(request):
+    """Send email to sign up user for verification of the account."""
+    if request.method == 'POST':
+        email =  request.data.get('email')
+        firstName = request.data.get('firstName')
+
+
+        totp = pyotp.TOTP(pyotp.random_base32(), interval=60)
+        otp = totp.now()
+        request.session['otp_secret_key'] = totp.secret
+        valid_date = datetime.now() + timedelta(minutes=1)
+
+        request.session['otp_valid_date'] = str(valid_date)
+
+        print('your OTP IS', otp)
+
+        message = f'hi! {firstName} your otp is {otp}'
+        send_mail(
+            'Verification of Email', # email subject
+            message, #email message
+            [email]
+        )
+
+   
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def otp_verification(request):
+    pass
+
+    

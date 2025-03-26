@@ -3,7 +3,7 @@ import uuid
 from .custom import CustomUser 
 from django.contrib.auth.hashers import make_password
 from .utils import upload_thumbnail
-
+import secrets
 
 # Create your models here.
 
@@ -29,7 +29,13 @@ class User(models.Model):
         if self.password and not self.password.startswith('pbkdf2_sha256$'):
             self.password = make_password(self.password)
         super().save(*args, **kwargs)
-    
+
+
+# class otpToken(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otps')
+#     otp_code = models.CharField(max_length=4, default=secrets.token_hex(3))
+#     tp_created_at = models.DateTimeField(auto_now_add=True) #to automaticly set the time
+#     otp_expires_at = models.DateTimeField(blank=True, null=True)
 
 # class UserProfile(models.Model):
 #     user = models.OneToOneField(User, on_delete=models.CASCADE)
