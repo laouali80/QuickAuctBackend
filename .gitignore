@@ -36,3 +36,5 @@ yarn-error.*
 *.tsbuildinfo
 
 __pycache__/
+
+.env
