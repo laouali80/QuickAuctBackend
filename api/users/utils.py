@@ -1,7 +1,8 @@
 import secrets
 import os
 from PIL import Image
-
+import random
+import string
 
 def upload_thumbnail(instance, filename):
     """This function upload an image to media/thumbnails file"""
@@ -13,6 +14,11 @@ def upload_thumbnail(instance, filename):
         path = path + '.' + extension
 
     return path
+
+
+def generate_otp():
+    """Generate a 4-digit OTP."""
+    return ''.join(random.choices(string.digits, k=4))
 
 
 # def save_picture(form_picture):
