@@ -70,7 +70,7 @@ CHANNEL_LAYERS = {
     'default':{
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG':{
-            'hosts': [('127.0.0.1', 6379)]
+            'hosts': [('127.0.0.1', 6379)] # Redis host and port
         }
     }
 }
@@ -229,4 +229,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+
+SIMPLE_JWT = {
+    "USER_ID_FIELD": "userId",  # Change from 'id' to 'userId'
 }
