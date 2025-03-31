@@ -38,3 +38,5 @@ yarn-error.*
 __pycache__/
 
 .env
+.venv
+*.pyc

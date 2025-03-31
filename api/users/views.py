@@ -11,7 +11,7 @@ from rest_framework import status
 from django.core.mail import send_mail
 from django.conf import settings
 from datetime import datetime, timedelta
-from utils import generate_otp
+from .utils import generate_otp
 
 
 
