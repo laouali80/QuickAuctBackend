@@ -91,7 +91,7 @@ def login(request):
         if user is not None:
             # RefreshToken allows us to create a token for a user
             refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
+            # access_token = str(refresh.access_token)
             # print(access_token)
             user_data = UserSerializer(user).data
 
@@ -99,7 +99,10 @@ def login(request):
                 "status": "success",
                 "message": "Login successful",
                 "data": {
-                    "accessToken": access_token,
+                    "tokens":{
+                        "access": str(refresh.access_token),
+                        'refresh': str(refresh)
+                    },
                     "user": user_data
                 }
             }, status=status.HTTP_200_OK)
