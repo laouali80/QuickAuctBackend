@@ -19,6 +19,14 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'auctionBackend.settings')
 
 django_asgi_app = get_asgi_application()
 
+from api.users.models import User  # Ensure User model is imported
+
+# application = ProtocolTypeRouter({
+#     "http": django_asgi_app,
+#     "websocket": JWTAuthMiddlewareStack(  # Remove `AllowedHostsOriginValidator`
+#         URLRouter(api.routing.websocket_urlpatterns)
+#     ),
+# })
 
 application = ProtocolTypeRouter({  # Correct
     "http": django_asgi_app,
