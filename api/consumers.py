@@ -73,11 +73,11 @@ class ChatConsumer(WebsocketConsumer):
     #---------------------
 
     def receive(self, text_data):
-        """This function is called when we receive data/message from client."""
+        """This function is called whenever any data is sent to the server from the client."""
 
         # rECEIV MESAGE FROM WEBSOCKET
         data = json.loads(text_data)
         # self.send(json.dumps({"message": f"Echo: {data}"}))
 
         # Pretty print python dict
-        print('receive', json.dumps(data, index=2))
+        print('receive', json.dumps(data, indent=2))
