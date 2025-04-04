@@ -6,7 +6,7 @@ import os
 from asgiref.sync import async_to_sync
 
 
-class ChatConsumer(WebsocketConsumer):
+class AuctionConsumer(WebsocketConsumer):
     def connect(self):
         """The first function to connect the user to websocket connection."""
 
@@ -18,14 +18,14 @@ class ChatConsumer(WebsocketConsumer):
         if token:
             self.user = self.authenticate_token(token)
             if self.user:
-                self.scope["user"] = self.user
 
-                # Save username to use as a group name for this user
-                self.username = self.user.username
+                # create a room group name of auction
+                self.room_group_name = 'auction'
 
-                # Join this user to a group with their username
+                # Create a room group of auction where every connected client will receive the auctions
                 async_to_sync(self.channel_layer.group_add)(
-                    self.username, self.channel_name
+                    self.room_group_name,   # this is for the group name
+                    self.channel_name       # this is to add any user to this channel
                 )
                 
                 # This is to accept the client connection
@@ -47,7 +47,7 @@ class ChatConsumer(WebsocketConsumer):
         """This method is call when a user disconnect from the connection"""
         # Leave room/group
         async_to_sync(self.channel_layer.group_discard)(
-            self.username, self.channel_name
+            self.room_group_name, self.channel_name
         )
         
 
@@ -75,9 +75,28 @@ class ChatConsumer(WebsocketConsumer):
     def receive(self, text_data):
         """This function is called when we receive data/message from client."""
 
-        # rECEIV MESAGE FROM WEBSOCKET
-        data = json.loads(text_data)
-        # self.send(json.dumps({"message": f"Echo: {data}"}))
+        # receive data/message from connected client
+        auction_data = json.loads(text_data)
+
 
         # Pretty print python dict
-        print('receive', json.dumps(data, index=2))
+        # print('receive', json.dumps(auction_data, index=2))
+
+        # this is to broadcast the message to each connected user
+        async_to_sync(self.channel_layer.group_send)(
+            self.room_group_name,
+            {
+                'type': 'auction_creation',
+                'message': auction_data
+            }
+        )
+
+    def auction_creation(self, event):
+        """This method is to broadcast a created auction to each connected user."""
+
+        auction = event['message']
+
+        self.send(text_data=json.dumps({
+            'type':'auction',
+            'message': auction
+        }))
