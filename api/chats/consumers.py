@@ -107,3 +107,45 @@ class ChatConsumer(WebsocketConsumer):
 
         # Serialize user
         serialized = UserSerializer(user)
+
+        # Send back / broadcast updated to the user
+        self.send_group(self.username, 'thumbnail', serialized.data)
+
+
+    #-----------------------------------
+    #      catch/all broadcast to client
+    #------------------------------------
+
+
+    def send_group(self, group, source, data):
+        """This method broadcast data to client."""
+
+        response = {
+            'type': 'broadcast_group',  # this type 'broadcast_group' is always a function that this send_group method will call 
+            'source':source,
+            'data': data
+        }
+
+        # send to group name which is username, response contains the of information of the message
+        async_to_sync(self.channel_layer.group_send)(
+            group, response
+        )
+
+    def broacast_group(self, data):
+        """This function is always called based on the type of send_group method"""
+        """
+        data:
+            - type: 'broadcast_group'
+            - source: where it originated from
+            - data: what ever you want to send as a dict
+        """
+
+        # we pop type because it is only usefull for the sake of calling this method
+        data.pop('type')
+
+        """
+        return data(data that user will receive):
+            - source: where it originated from
+            - data: what ever you want to send as a ict
+        """
+        self.send(text_data=json.dumps(data))
