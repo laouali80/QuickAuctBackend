@@ -1,9 +1,13 @@
-from channels.generic.websocket import WebsocketConsumer
 import json
-from django.contrib.auth import get_user_model
 import jwt
 import os
+import base64
+
+from channels.generic.websocket import WebsocketConsumer
+from django.contrib.auth import get_user_model
 from asgiref.sync import async_to_sync
+from django.core.files.base import ContentFile
+from api.users.serializers import UserSerializer
 
 
 class ChatConsumer(WebsocketConsumer):
@@ -77,7 +81,29 @@ class ChatConsumer(WebsocketConsumer):
 
         # rECEIV MESAGE FROM WEBSOCKET
         data = json.loads(text_data)
+        data_source = data.get('source')
         # self.send(json.dumps({"message": f"Echo: {data}"}))
 
         # Pretty print python dict
         print('receive', json.dumps(data, indent=2))
+
+
+        # Thumbnail update
+        if data_source == 'thumbnail':
+            self.receive_thumbnail(data)
+
+
+    def receive_thumbnail(self, data):
+
+        user = self.scope['user']
+
+        # convert base64 to django content file
+        image_str = data.get('base64')
+        image = ContentFile(base64.b64decode(image_str))
+
+        # Update thumbnail field
+        filename = data.get('filename')
+        user.thumbnail.save(filename, image, save=True)
+
+        # Serialize user
+        serialized = UserSerializer(user)
