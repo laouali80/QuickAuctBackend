@@ -232,10 +232,6 @@ REST_FRAMEWORK = {
 }
 
 
-# SIMPLE_JWT = {
-#     "USER_ID_FIELD": "userId",  # Change from 'id' to 'userId'
-# }
-
 from datetime import timedelta
 
 SIMPLE_JWT = {
