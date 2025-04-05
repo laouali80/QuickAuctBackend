@@ -67,12 +67,12 @@ ASGI_APPLICATION = 'auctionBackend.asgi.application'
 
 # Channels config
 CHANNEL_LAYERS = {
-    'default':{
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG':{
-            'hosts': [('127.0.0.1', 6379)] # Redis host and port
-        }
-    }
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],  # Use your Redis host and port
+        },
+    },
 }
 
 # profile picture media config
@@ -232,6 +232,28 @@ REST_FRAMEWORK = {
 }
 
 
+# SIMPLE_JWT = {
+#     "USER_ID_FIELD": "userId",  # Change from 'id' to 'userId'
+# }
+
+from datetime import timedelta
+
 SIMPLE_JWT = {
-    "USER_ID_FIELD": "userId",  # Change from 'id' to 'userId'
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))),  # Short-lived access token
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv('REFRESH_TOKEN_EXPIRE_TIME'))),  # Long-lived refresh token (1 month)
+    "ROTATE_REFRESH_TOKENS": True,  # New refresh token issued every time it's used
+    "BLACKLIST_AFTER_ROTATION": True,  # Old refresh tokens become invalid
+    "UPDATE_LAST_LOGIN": False,
+
+    "ALGORITHM": os.getenv('JWT_ALGORITHM', "HS256"),
+    "SIGNING_KEY": os.getenv('JWT_SECRET_KEY'),  # Must be set!
+    "VERIFYING_KEY": None,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "userId",
+    "USER_ID_CLAIM": "user_id",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+
+    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
 }
