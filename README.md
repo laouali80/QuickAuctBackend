@@ -4,6 +4,9 @@ quick1234
 lbid
 laouali1234
 
+test
+test1234
+
 login
 {
 "email": "test@gmail.com",
