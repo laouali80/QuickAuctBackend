@@ -12,7 +12,8 @@ class Auction(models.Model):
         ('ongoing', 'Ongoing'),
     ]
     auctId = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=200)
+    title = models.CharField(max_length=200)
+    description = models.CharField(max_length=200, null=True)
     current_price = models.BigIntegerField()
     bid_increment  = models.IntegerField(default=1)
     expiration_date = models.DateTimeField()
@@ -23,7 +24,7 @@ class Auction(models.Model):
     updatedAt = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return self.title
     
 
         

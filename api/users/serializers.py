@@ -10,6 +10,8 @@ from api.auctions.models import Auction
 
 class UserSerializer(serializers.ModelSerializer):
     # userId = serializers.UUIDField(source='userId')
+    userId = serializers.CharField(read_only=True)  # Convert UUID to string
+
 
     class Meta:
         model = User

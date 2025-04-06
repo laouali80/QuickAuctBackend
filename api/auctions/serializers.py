@@ -1,35 +1,40 @@
 # serializers.py
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
-# from .users.models import Organisation
+
 from rest_framework.response import Response
-from rest_framework import status
 from django.db import IntegrityError
 from api.users.models import User
 from api.auctions.models import Auction
 
 
 class AuctionSerializer(serializers.ModelSerializer):
+    auctId = serializers.CharField(read_only=True)  # Convert UUID to string
+    seller = serializers.StringRelatedField()  # Uses User.__str__()
+    top_bidder = serializers.StringRelatedField()  # Optional: Replace with UserSerializer if needed
+    
 
     class Meta:
         model = Auction
-        fields = [all]
+        fields = '__all__'  # Includes all model fields
 
 
 
 class CreateAuctionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Auction
-        fields = ['name', 'current_price']
+        fields = ['title','description', 'current_price','expiration_date','seller',]
         extra_kwargs = {
-                        'name': {'error_messages': {'blank': 'Required and cannot be null.'}},
+                        'title': {'error_messages': {'blank': 'Required and cannot be null.'}},
                         }
 
     def create(self, validated_data):
         try:
             auction = Auction.objects.create(
-                name=validated_data['name'],
-                current_price=validated_data['current_price']
+                title=validated_data['title'],
+                decription=validated_data['description'],
+                current_price=validated_data['current_price'],
+                expiration_date=validated_data['expiration_date'],
+                seller=validated_data['seller']
             )
             Auction.save()
         except IntegrityError as e:
