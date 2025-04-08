@@ -1,10 +1,10 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Auction
-from .serializers import AuctionSerializer, CreateAuctionSerializer
+from .serializers import AuctionCreateSerializer, AuctionImageSerializer, AuctionSerializer, AuctionTransactionSerializer
 
 
 
@@ -20,7 +20,7 @@ def create_auction(request):
             "description": request.data.get('description'),
             'seller': request.user
         }
-        new_auct_serializer = CreateAuctionSerializer(data=new_auct_data)
+        new_auct_serializer = AuctionCreateSerializer(data=new_auct_data)
 
         if new_auct_serializer.is_valid():
             auction = new_auct_serializer.save()
@@ -36,13 +36,14 @@ def get_auction(request, auctId):
     serializer = AuctionSerializer(auction)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 @api_view(['POST', 'GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_auctions(request):
     """get all user auctions."""
 
     if request.method == 'GET':
-        auctions = request.user.auctions.all()
+        auctions = Auction.objects.all()
 
         
         serializer = AuctionSerializer(auctions, many=True)
