@@ -3,17 +3,38 @@ import os
 from PIL import Image
 import random
 import string
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+
+
+# def upload_thumbnail(instance, filename):
+#     """This function upload an profile image to media/thumbnails file"""
+    
+#     path = f'thumbnails/{instance.username}'
+#     extension = filename.split('.')[-1]
+
+#     if extension:
+#         path = path + '.' + extension
+
+#     return path
 
 def upload_thumbnail(instance, filename):
-    """This function upload an image to media/thumbnails file"""
-    
-    path = f'thumbnails/{instance.username}'
-    extension = filename.split('.')[-1]
+    """
+    Generates a secure random filename for a thumbnail image
+    and stores it in the thumbnails/ directory.
+    """
+    # Generate a random hex string
+    random_hex = secrets.token_hex(8)
 
-    if extension:
-        path = path + '.' + extension
+    # Extract the file extension
+    _, extension = os.path.splitext(filename)
 
-    return path
+    # Sanitize extension (remove dot, default to .jpg if missing)
+    ext = extension.lower().lstrip('.') or 'jpg'
+
+    # Construct the secure path
+    new_filename = f"{random_hex}.{ext}"
+    return f"thumbnails/{new_filename}"
 
 
 def generate_otp():
@@ -21,26 +42,3 @@ def generate_otp():
     return ''.join(random.choices(string.digits, k=4))
 
 
-# def save_picture(form_picture):
-#     """ the function allows us to save a picture upload in our static/profile_pics"""
-
-#     random_hex = secrets.token_hex(8)
-
-#     # to get the extension of a file
-#     # _ means we don't need the data store in _ == f_name
-#     _, f_ext = os.path.splitext(form_picture.filename)
-
-#     # assigning a new name with hex num to our picture
-#     picture_fn = random_hex + f_ext
-
-#     # storing the picture in profile_pics folder
-#     picture_path = os.path.join(current_app.root_path, 'static/profile_pics', picture_fn)
-
-#     # resize the picture
-#     output_size = (125, 125)
-#     i = Image.open(form_picture)
-#     i.thumbnail(output_size)
-    
-#     i.save(picture_path)
-
-#     return picture_fn
