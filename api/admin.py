@@ -1,9 +1,16 @@
 from django.contrib import admin
 from .users.models import User
-from .auctions.models import Auction
-
+from .auctions.models import Auction, Category, Bid, AuctionImage, AuctionTransaction
+from .chats.models import Connection
 # Register your models here.
 
 
 admin.site.register(User)
+
+
+# Auction models
 admin.site.register(Auction)
+admin.site.register(Category)
+admin.site.register(Bid)
+admin.site.register(AuctionImage)
+admin.site.register(AuctionTransaction)

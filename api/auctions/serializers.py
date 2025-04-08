@@ -5,13 +5,14 @@ from rest_framework.response import Response
 from django.db import IntegrityError
 from api.users.models import User
 from api.auctions.models import Auction
-
+from api.users.serializers import UserSerializer
 
 class AuctionSerializer(serializers.ModelSerializer):
     auctId = serializers.CharField(read_only=True)  # Convert UUID to string
-    seller = serializers.StringRelatedField()  # Uses User.__str__()
-    top_bidder = serializers.StringRelatedField()  # Optional: Replace with UserSerializer if needed
-    
+    # seller = serializers.StringRelatedField()  # Uses User.__str__()
+    # top_bidder = serializers.StringRelatedField()  # Optional: Replace with UserSerializer if needed
+    seller = UserSerializer()
+    top_bidder = UserSerializer()
 
     class Meta:
         model = Auction

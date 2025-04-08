@@ -4,6 +4,9 @@ import jwt
 import os
 import base64
 import logging
+from PIL import Image
+from io import BytesIO
+from django.core.files.base import ContentFile
 from django.core.exceptions import ObjectDoesNotExist
 from channels.generic.websocket import WebsocketConsumer
 from django.contrib.auth import get_user_model
@@ -139,11 +142,27 @@ class ChatConsumer(WebsocketConsumer):
             raise ValueError("Missing required thumbnail data")
 
         image_data = base64.b64decode(data['base64'])
-        image_file = ContentFile(image_data, name=data['filename'])
-
+        # image_file = ContentFile(image_data, name=data['filename'])
         # Update user thumbnail
-        self.user.thumbnail.save(data['filename'], image_file, save=True)
-        
+        # self.user.thumbnail.save(data['filename'], image_file, save=True)
+
+         # Resize image with PIL
+        image = Image.open(BytesIO(image_data))
+        image.thumbnail((125, 125))  # Resize to thumbnail
+
+        # Save image to memory
+        output_io = BytesIO()
+        image_format = image.format or 'JPEG'  # Fallback in case format is None
+        image.save(output_io, format=image_format)
+        output_io.seek(0)
+
+        # Create a ContentFile from the resized image
+        resized_image_file = ContentFile(output_io.read(), name=data['filename'])
+
+        # Save the resized image
+        self.user.thumbnail.save(data['filename'], resized_image_file, save=True)
+
+       
         # Broadcast update
         serialized = UserSerializer(self.user)
         self._broadcast_to_user('thumbnail', serialized.data)
