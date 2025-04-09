@@ -13,6 +13,9 @@ from django.contrib.auth import get_user_model
 from asgiref.sync import async_to_sync
 from django.core.files.base import ContentFile
 from api.users.serializers import UserSerializer
+from .models import Connection
+from django.db.models import Q
+from .serializers import ChatsSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +136,7 @@ class ChatConsumer(WebsocketConsumer):
         """Get appropriate handler for message type."""
         handlers = {
             'thumbnail': self._handle_thumbnail_update,
+            'FetchChatsList': self._handle_fetch_chats_list
         }
         return handlers.get(message_type)
 
@@ -166,6 +170,19 @@ class ChatConsumer(WebsocketConsumer):
         # Broadcast update
         serialized = UserSerializer(self.user)
         self._broadcast_to_user('thumbnail', serialized.data)
+
+
+    def _handle_fetch_chats_list(self, data):
+        user = self.user
+
+        # Get connections for user
+        connections = Connection.objects.filter(
+            Q(sender=user) | Q(receiver=user)
+        )
+
+        serialized = ChatsSerializer(connections, context={'user': user} ,many=True)
+        self._broadcast_to_user('chatsList', serialized.data)
+
 
     # ----------------------
     #  Response Methods
