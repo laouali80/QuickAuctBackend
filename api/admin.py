@@ -14,3 +14,6 @@ admin.site.register(Category)
 admin.site.register(Bid)
 admin.site.register(AuctionImage)
 admin.site.register(AuctionTransaction)
+
+# Chats models
+admin.site.register(Connection)
