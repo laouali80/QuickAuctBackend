@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .users.models import User
 from .auctions.models import Auction, Category, Bid, AuctionImage, AuctionTransaction
-from .chats.models import Connection
+from .chats.models import Connection,Message
 # Register your models here.
 
 
@@ -17,3 +17,4 @@ admin.site.register(AuctionTransaction)
 
 # Chats models
 admin.site.register(Connection)
+admin.site.register(Message)

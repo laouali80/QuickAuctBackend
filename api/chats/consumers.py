@@ -13,9 +13,9 @@ from django.contrib.auth import get_user_model
 from asgiref.sync import async_to_sync
 from django.core.files.base import ContentFile
 from api.users.serializers import UserSerializer
-from .models import Connection
+from .models import Connection, Message
 from django.db.models import Q
-from .serializers import ChatsSerializer
+from .serializers import ChatSerializer, MessageSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +128,7 @@ class ChatConsumer(WebsocketConsumer):
     def _parse_message(self, text_data):
         """Parse and validate incoming message."""
         data = json.loads(text_data)
+        # print('client receive data: ', data)
         if not isinstance(data, dict):
             raise ValueError("Message must be a JSON object")
         return data
@@ -136,7 +137,9 @@ class ChatConsumer(WebsocketConsumer):
         """Get appropriate handler for message type."""
         handlers = {
             'thumbnail': self._handle_thumbnail_update,
-            'FetchChatsList': self._handle_fetch_chats_list
+            'FetchChatsList': self._handle_fetch_chats_list,
+            'message_send':self._handle_message_send,
+            'fetchMessagesList':self._handle_fetch_messages_list,
         }
         return handlers.get(message_type)
 
@@ -173,6 +176,7 @@ class ChatConsumer(WebsocketConsumer):
 
 
     def _handle_fetch_chats_list(self, data):
+        """Fetches the list of chats the user had."""
         user = self.user
 
         # Get connections for user
@@ -180,8 +184,117 @@ class ChatConsumer(WebsocketConsumer):
             Q(sender=user) | Q(receiver=user)
         )
 
-        serialized = ChatsSerializer(connections, context={'user': user} ,many=True)
+        serialized = ChatSerializer(connections, context={'user': user} ,many=True)
         self._broadcast_to_user('chatsList', serialized.data)
+
+
+    def _handle_message_send(self, data):
+        """Handle message send by a user to another user."""
+        # print(data)
+        user = self.user
+        ConnectionId = data.get('connectionId')
+        content = data.get('content')
+
+        try:
+            connection = Connection.objects.get(id=ConnectionId)
+            print('existing: ',connection)
+        except Connection.DoesNotExist:
+            print("Error: couldn't find connection")
+            return 
+        
+        
+        message = Message.objects.create(
+            connection=connection,
+            user=user,
+            content=content
+        )
+
+        # determine the recipient friend
+        recipient = connection.sender
+        if connection.sender == user:
+            recipient = connection.receiver
+
+
+        # send new message back to sender 
+        serialized_message = MessageSerializer(
+            message,
+            context={'user': user}
+        )
+
+        serialized_friend = UserSerializer(recipient)
+        data = {
+            'message': serialized_message.data,
+            'friend': serialized_friend.data
+        }
+
+        # Broadcast to sender user the message
+        self._broadcast_to_user('message_send', data)
+
+
+        
+
+        # send new message to receiver 
+        serialized_message = MessageSerializer(
+            message,
+            context={'user': recipient}
+        )
+
+        serialized_friend = UserSerializer(user)
+        data = {
+            'message': serialized_message.data,
+            'friend': serialized_friend.data
+        }
+
+        # Broadcast to the recipient user the message
+        self._broadcast_to_recipient(recipient, 'message_send', data)
+
+
+    def _handle_fetch_messages_list(self, data):
+        """Fetchs the list of message a user had 2 users had."""
+
+        user = self.user
+        ConnectionId = data.get('connectionId')
+        page = data.get('page')
+        
+
+        
+        try:
+            connection = Connection.objects.get(id=ConnectionId)
+        except Connection.DoesNotExist:
+            print("Error: couldn't find connection")
+            return 
+       
+        # Get messages 
+        messages = Message.objects.filter(
+            connection=connection
+        )
+        
+        # print('messages: ', messages)
+        # Serialized message
+        serialized_messages = MessageSerializer(
+            messages,
+            context={'user': user},
+            many=True
+        )
+
+        # Get recipient friend
+        recipient = connection.sender
+        if connection.sender == user:
+            recipient = connection.receiver
+
+        
+        # Serialize friend
+        serialized_friend = UserSerializer(recipient)
+
+
+        data = {
+            'messages': serialized_messages.data,
+            'friend': serialized_friend.data
+        }
+
+        # send back to the requestor
+        self._broadcast_to_user('messagesList', data)
+
 
 
     # ----------------------
@@ -192,6 +305,17 @@ class ChatConsumer(WebsocketConsumer):
         """Send data to the user's personal group."""
         async_to_sync(self.channel_layer.group_send)(
             self.username,
+            {
+                'type': 'broadcast.message',
+                'source': source,
+                'data': data
+            }
+        )
+    
+    def _broadcast_to_recipient(self, recipient, source, data):
+        """Send data to the user's personal group."""
+        async_to_sync(self.channel_layer.group_send)(
+            recipient.username,
             {
                 'type': 'broadcast.message',
                 'source': source,
