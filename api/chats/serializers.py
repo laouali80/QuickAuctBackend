@@ -5,10 +5,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import IntegrityError
 from api.users.models import User
-from .models import Connection
+from .models import Connection, Message
 from api.users.serializers import UserSerializer
 
-class ChatsSerializer(serializers.ModelSerializer):
+class ChatSerializer(serializers.ModelSerializer):
     friend = serializers.SerializerMethodField()
     preview = serializers.SerializerMethodField()
 
@@ -29,3 +29,18 @@ class ChatsSerializer(serializers.ModelSerializer):
     def get_preview(self, data):
         return 'Really cool preview string'
      
+
+class MessageSerializer(serializers.ModelSerializer):
+    is_me = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Message
+        fields = [
+            'id',
+            'is_me',
+            'content',
+            'created'
+        ]
+
+    def get_is_me(self, obj):
+        return self.context['user'] == obj.user
