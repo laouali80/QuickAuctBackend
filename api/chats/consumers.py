@@ -14,7 +14,9 @@ from asgiref.sync import async_to_sync
 from django.core.files.base import ContentFile
 from api.users.serializers import UserSerializer
 from .models import Connection, Message
-from django.db.models import Q
+from api.users.models import User
+from django.db.models import Q, OuterRef
+from django.db.models.functions import Coalesce
 from .serializers import ChatSerializer, MessageSerializer
 
 logger = logging.getLogger(__name__)
@@ -140,6 +142,7 @@ class ChatConsumer(WebsocketConsumer):
             'FetchChatsList': self._handle_fetch_chats_list,
             'message_send':self._handle_message_send,
             'fetchMessagesList':self._handle_fetch_messages_list,
+            'message_typing': self._handle_message_typing,
         }
         return handlers.get(message_type)
 
@@ -179,12 +182,28 @@ class ChatConsumer(WebsocketConsumer):
         """Fetches the list of chats the user had."""
         user = self.user
 
+        # Latest message subquery
+        latest_messages = Message.objects.filter(
+            connection=OuterRef('pk')
+        ).order_by('-created')[:1]
+        
         # Get connections for user
+        # annotate allows us to add a pseudo field to our queryset.
+        # Coalesce('latest_created', 'updated') allows us to arrange the chats from the latest created message to the latest updated connection
         connections = Connection.objects.filter(
             Q(sender=user) | Q(receiver=user)
+        )\
+        .annotate(
+            latest_content = latest_messages.values('content'),
+            latest_created = latest_messages.values('created')
+        )\
+        .order_by(
+            Coalesce('latest_created', 'updated').desc()
         )
+        
 
         serialized = ChatSerializer(connections, context={'user': user} ,many=True)
+        # print('serialized: ', serialized.data)
         self._broadcast_to_user('chatsList', serialized.data)
 
 
@@ -197,7 +216,7 @@ class ChatConsumer(WebsocketConsumer):
 
         try:
             connection = Connection.objects.get(id=ConnectionId)
-            print('existing: ',connection)
+            # print('existing: ',connection)
         except Connection.DoesNotExist:
             print("Error: couldn't find connection")
             return 
@@ -246,7 +265,7 @@ class ChatConsumer(WebsocketConsumer):
         }
 
         # Broadcast to the recipient user the message
-        self._broadcast_to_recipient(recipient, 'message_send', data)
+        self._broadcast_to_recipient(recipient.username, 'message_send', data)
 
 
     def _handle_fetch_messages_list(self, data):
@@ -296,6 +315,93 @@ class ChatConsumer(WebsocketConsumer):
         self._broadcast_to_user('messagesList', data)
 
 
+    def _handle_new_connection(self, data):
+        sender = self.user
+        receiver_id = data.get('receiver_id')
+        content = data.get('content')
+
+        #   # Create connection and first message for perfomance
+        # with transaction.atomic():
+        #     connection = Connection.objects.create(
+        #         sender=sender,
+        #         receiver=receiver
+        #     )
+            
+        #     message = Message.objects.create(
+        #         connection=connection,
+        #         user=sender,
+        #         content=content
+        #     )
+
+
+        try:
+            receiver = User.objects.get(pk=receiver_id)
+            try:
+                new_connection = Connection.objects.create(
+                    sender=sender,
+                    receiver=receiver
+                )
+            except Exception as e:
+                logger.error(f"Error creating connection: {str(e)}")
+                self._send_error("Failed to create connection")
+        except User.DoesNotExist:
+            logger.error(f"Receiver {receiver_id} not found")
+            self._send_error("Recipient user not found") 
+
+        message = Message.objects.create(
+            connection=new_connection,
+            user=sender,
+            content=content
+        )
+
+
+        # send new message back to sender 
+        serialized_message = MessageSerializer(
+            message,
+            context={'user': sender}
+        )
+
+        serialized_friend = UserSerializer(receiver)
+        data = {
+            'message': serialized_message.data,
+            'friend': serialized_friend.data
+        }
+
+        # Broadcast to sender user the message
+        self._broadcast_to_user('new_connection', data)
+
+
+        
+
+        # send new message to receiver 
+        serialized_message = MessageSerializer(
+            message,
+            context={'user': receiver}
+        )
+
+        serialized_friend = UserSerializer(sender)
+        data = {
+            'message': serialized_message.data,
+            'friend': serialized_friend.data
+        }
+
+        # Broadcast to the recipient user the message
+        self._broadcast_to_recipient(receiver.username, 'new_connection', data)
+
+
+    def _handle_message_typing(self, data):
+        """Handle the message typing animation."""
+
+        user = self.user
+        recipient_username = data.get('username')
+
+        data = {
+            'username': user.username
+        }
+
+        self._broadcast_to_recipient(recipient_username, 'message_typing', data)
+
+
 
     # ----------------------
     #  Response Methods
@@ -315,7 +421,7 @@ class ChatConsumer(WebsocketConsumer):
     def _broadcast_to_recipient(self, recipient, source, data):
         """Send data to the user's personal group."""
         async_to_sync(self.channel_layer.group_send)(
-            recipient.username,
+            recipient,
             {
                 'type': 'broadcast.message',
                 'source': source,
