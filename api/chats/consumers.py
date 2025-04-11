@@ -142,6 +142,7 @@ class ChatConsumer(WebsocketConsumer):
             'FetchChatsList': self._handle_fetch_chats_list,
             'message_send':self._handle_message_send,
             'fetchMessagesList':self._handle_fetch_messages_list,
+            'message_typing': self._handle_message_typing,
         }
         return handlers.get(message_type)
 
@@ -202,7 +203,7 @@ class ChatConsumer(WebsocketConsumer):
         
 
         serialized = ChatSerializer(connections, context={'user': user} ,many=True)
-        print('serialized: ', serialized.data)
+        # print('serialized: ', serialized.data)
         self._broadcast_to_user('chatsList', serialized.data)
 
 
@@ -215,7 +216,7 @@ class ChatConsumer(WebsocketConsumer):
 
         try:
             connection = Connection.objects.get(id=ConnectionId)
-            print('existing: ',connection)
+            # print('existing: ',connection)
         except Connection.DoesNotExist:
             print("Error: couldn't find connection")
             return 
@@ -264,7 +265,7 @@ class ChatConsumer(WebsocketConsumer):
         }
 
         # Broadcast to the recipient user the message
-        self._broadcast_to_recipient(recipient, 'message_send', data)
+        self._broadcast_to_recipient(recipient.username, 'message_send', data)
 
 
     def _handle_fetch_messages_list(self, data):
@@ -385,8 +386,20 @@ class ChatConsumer(WebsocketConsumer):
         }
 
         # Broadcast to the recipient user the message
-        self._broadcast_to_recipient(receiver, 'new_connection', data)
+        self._broadcast_to_recipient(receiver.username, 'new_connection', data)
 
+
+    def _handle_message_typing(self, data):
+        """Handle the message typing animation."""
+
+        user = self.user
+        recipient_username = data.get('username')
+
+        data = {
+            'username': user.username
+        }
+
+        self._broadcast_to_recipient(recipient_username, 'message_typing', data)
 
 
 
@@ -408,7 +421,7 @@ class ChatConsumer(WebsocketConsumer):
     def _broadcast_to_recipient(self, recipient, source, data):
         """Send data to the user's personal group."""
         async_to_sync(self.channel_layer.group_send)(
-            recipient.username,
+            recipient,
             {
                 'type': 'broadcast.message',
                 'source': source,
