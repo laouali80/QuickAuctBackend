@@ -274,6 +274,7 @@ class ChatConsumer(WebsocketConsumer):
         user = self.user
         ConnectionId = data.get('connectionId')
         page = data.get('page')
+        page_size = 6
         
 
         
@@ -283,10 +284,13 @@ class ChatConsumer(WebsocketConsumer):
             print("Error: couldn't find connection")
             return 
        
-        # Get messages 
+        # Get messages per pagination
         messages = Message.objects.filter(
             connection=connection
-        )
+        )[page * page_size:(page + 1) * page_size]
+
+        # [page * page_size:(page + 1) * page_size]
+        
         
         # print('messages: ', messages)
         # Serialized message
@@ -295,6 +299,7 @@ class ChatConsumer(WebsocketConsumer):
             context={'user': user},
             many=True
         )
+        print(serialized_messages.data)
 
         # Get recipient friend
         recipient = connection.sender
@@ -305,9 +310,18 @@ class ChatConsumer(WebsocketConsumer):
         # Serialize friend
         serialized_friend = UserSerializer(recipient)
 
+        # Count the total number of messages for this connection
+        total_messages = Message.objects.filter(
+            connection=connection
+        ).count()
 
+        # Compute the next page
+        next_page = page + 1 if total_messages > (page + 1) * page_size else None
+
+        print('Pages:', page, next_page)
         data = {
             'messages': serialized_messages.data,
+            'next': next_page,
             'friend': serialized_friend.data
         }
 
