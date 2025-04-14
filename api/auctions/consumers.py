@@ -3,57 +3,68 @@ import json
 from django.contrib.auth import get_user_model
 import jwt
 import os
+import logging
 from asgiref.sync import async_to_sync
 from django.db.models import Q
 from .models import Auction
 from .serializers import AuctionSerializer
 from django.core.exceptions import ObjectDoesNotExist
 
+
+logger = logging.getLogger(__name__)
+
 class AuctionConsumer(WebsocketConsumer):
     """WebSocket consumer for handling auction-related real-time communication."""
     
     GROUP_NAME = 'auction'  # Constant for group name
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = None
+        self.username = None
+
+
     def connect(self):
         """Authenticate and establish WebSocket connection."""
-        token = self._extract_token()
-        
-        if not token:
-            self._reject_connection("No token provided")
-            return
-
         try:
+            token = self._extract_token()
+            if not token:
+                raise ValueError("No authentication token provided")
+
             self.user = self._authenticate_token(token)
             if not self.user:
-                self._reject_connection("Invalid token")
-                return
+                raise ValueError("Invalid authentication credentials")
 
-            self._join_group()
-            self.accept()
-            print(f"✅ Authenticated WebSocket: {self.user}")
+            self._initialize_connection()
+            logger.info(f"✅ Authenticated WebSocket connection for user: {self.user}")
 
         except Exception as e:
-            self._reject_connection(f"Connection error: {str(e)}")
+            logger.error(f"🚨 WebSocket connection failed: {str(e)}")
+            self.close()
+
+
 
     def disconnect(self, close_code):
         """Clean up on WebSocket disconnect."""
-        self._leave_group()
+        if hasattr(self, 'username') and self.username:
+            self._leave_group()
+            logger.info(f"User {self.username} disconnected with code: {close_code}")
 
     def receive(self, text_data):
         """Handle incoming WebSocket messages."""
         try:
-            data = json.loads(text_data)
-            source = data.get('source')
-            # print(data.get('source'))
-            if source == 'search':
-                self._handle_search(data)
+            data = self._parse_message(text_data)
+            handler = self._get_message_handler(data.get('source'))
+            if handler:
+                handler(data)
             else:
-                self._send_error("Unknown message source")
+                self._send_error("Unsupported message type")
 
         except json.JSONDecodeError:
-            self._send_error("Invalid JSON format")
+            self._send_error("Invalid message format")
         except Exception as e:
-            self._send_error(f"Processing error: {str(e)}")
+            logger.error(f"Error processing message: {str(e)}")
+            self._send_error("Internal server error")
 
     # ----------------------
     #  Authentication Helpers
@@ -75,7 +86,7 @@ class AuctionConsumer(WebsocketConsumer):
                 algorithms=[os.getenv("JWT_ALGORITHM")],
                 options={"verify_signature": False}
             )
-            print('auction verif: ',payload["user_id"])
+            # print('auction verif: ',payload["user_id"])
 
             return get_user_model().objects.get(pk=payload["user_id"])
         except jwt.ExpiredSignatureError:
@@ -91,6 +102,18 @@ class AuctionConsumer(WebsocketConsumer):
     # ----------------------
     #  Group Management
     # ----------------------
+
+    def _initialize_connection(self):
+        """Set up user connection and groups."""
+        self.scope["user"] = self.user
+        self.username = self.user.username
+        
+        # Join user to their personal group
+        async_to_sync(self.channel_layer.group_add)(
+            self.username, 
+            self.channel_name
+        )
+        self.accept()
 
     def _join_group(self):
         """Add connection to auction group."""
@@ -109,6 +132,26 @@ class AuctionConsumer(WebsocketConsumer):
     # ----------------------
     #  Message Handlers
     # ----------------------
+
+    def _parse_message(self, text_data):
+        """Parse and validate incoming message."""
+        data = json.loads(text_data)
+        print('client receive data: ', data)
+        if not isinstance(data, dict):
+            raise ValueError("Message must be a JSON object")
+        return data
+    
+
+    def _get_message_handler(self, message_type):
+        """Get appropriate handler for message type."""
+        handlers = {
+            'search': self._handle_search,
+            'FetchAuctionsList': self._handle_fetch_auctions_list,
+            # 'message_send':self._handle_message_send,
+            # 'fetchMessagesList':self._handle_fetch_messages_list,
+            # 'message_typing': self._handle_message_typing,
+        }
+        return handlers.get(message_type)
 
     def _handle_search(self, data):
         """Process auction search requests."""
@@ -136,6 +179,23 @@ class AuctionConsumer(WebsocketConsumer):
             Q(title__istartswith=query) |
             Q(title__icontains=query)
         ).exclude(seller=self.user)
+    
+
+    def _handle_fetch_auctions_list(self, data):
+        """Fetches the list of chats the user had."""
+        user = self.user
+
+        auctions =  Auction.objects.filter(
+            status='ongoing'
+        ).exclude(seller=user).order_by('-created_at')
+        
+        
+        print('auctions: ',auctions)
+
+        serialized = AuctionSerializer(auctions ,many=True)
+        # print('serialized: ', serialized.data)
+        self._broadcast_to_user('auctionsList', serialized.data)
+
 
     # ----------------------
     #  Response Methods
@@ -173,6 +233,29 @@ class AuctionConsumer(WebsocketConsumer):
         except Exception as e:
             print(f"Error broadcasting message: {str(e)}")
 
+    def _broadcast_to_user(self, source, data):
+        """Send data to the user's personal group."""
+        async_to_sync(self.channel_layer.group_send)(
+            self.username,
+            {
+                'type': 'broadcast.message',
+                'source': source,
+                'data': data
+            }
+        )
+
+
+    def broadcast_message(self, event):
+        """Handle messages sent to the user's group."""
+        try:
+            self.send(text_data=json.dumps({
+                'source': event['source'],
+                'data': event['data']
+            }))
+        except Exception as e:
+            logger.error(f"Error broadcasting message: {str(e)}")
+
+
     def auction_creation(self, event):
         """Broadcast new auction to group."""
         self.send(text_data=json.dumps({
@@ -180,7 +263,7 @@ class AuctionConsumer(WebsocketConsumer):
             'data': event['message']
         }))
 
-
+     
 
 
 
