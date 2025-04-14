@@ -135,7 +135,7 @@ def send_otp(request):
         return Response({"message": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     otp = generate_otp()
-    valid_until = datetime.now() + timedelta(minutes=1)
+    valid_until = datetime.now() + timedelta(minutes=30)
 
     request.session['otp_secret_key'] = otp  # Store OTP in session
     request.session['otp_valid_date'] = str(valid_until)
@@ -153,13 +153,14 @@ def send_otp(request):
             fail_silently=False,
         )
         return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
+    # return Response({otp}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"message": "Failed to send OTP", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def otp_verification(request):
+def otp_validation(request):
     """Verify the OTP submitted by the unregistered user."""
     otp = request.data.get('otp')
 

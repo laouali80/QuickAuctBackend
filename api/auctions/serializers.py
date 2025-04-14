@@ -73,6 +73,7 @@ class BidSerializer(serializers.ModelSerializer):
 
 
 class AuctionSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(read_only=True)  # Convert UUID to string
     seller = UserSerializer(read_only=True)
     winner = UserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
@@ -117,6 +118,7 @@ class AuctionSerializer(serializers.ModelSerializer):
             'has_ended'
         ]
         read_only_fields = [
+            'id',
             'current_price',
             'created_at',
             'updated_at',
