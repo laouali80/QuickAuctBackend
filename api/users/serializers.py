@@ -36,7 +36,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
     # this function is called when we want to save the serialize user with the data(validated_data)
     def create(self, validated_data):
-        print(validated_data)
+        # print(validated_data)
         # password = validated_data.pop('password')
         try:
             # user = User.objects.create(

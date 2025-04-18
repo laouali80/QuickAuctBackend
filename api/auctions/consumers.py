@@ -136,7 +136,7 @@ class AuctionConsumer(WebsocketConsumer):
     def _parse_message(self, text_data):
         """Parse and validate incoming message."""
         data = json.loads(text_data)
-        print('client receive data: ', data)
+        # print('client receive data: ', data)
         if not isinstance(data, dict):
             raise ValueError("Message must be a JSON object")
         return data
@@ -190,7 +190,7 @@ class AuctionConsumer(WebsocketConsumer):
         ).exclude(seller=user).order_by('-created_at')
         
         
-        print('auctions: ',auctions)
+        # print('auctions: ',auctions)
 
         serialized = AuctionSerializer(auctions ,many=True)
         # print('serialized: ', serialized.data)
