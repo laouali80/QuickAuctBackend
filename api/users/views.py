@@ -38,7 +38,7 @@ def register_user(request):
         if serializer.is_valid():
             
             user = serializer.save()
-            print(user)
+            # print(user)
             refresh = RefreshToken.for_user(user)
             # access_token = str(refresh.access_token)
             user_data = UserSerializer(user).data
@@ -92,7 +92,7 @@ def login(request):
         
  
         user = authenticate(request, email=email, password=password)
-        print('user: ',authenticate(request, email=email, password=password))
+        # print('user: ',authenticate(request, email=email, password=password))
         
         
         if user is not None:

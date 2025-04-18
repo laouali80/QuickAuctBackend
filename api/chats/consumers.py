@@ -4,7 +4,7 @@ import jwt
 import os
 import base64
 import logging
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 from django.core.files.base import ContentFile
 from django.core.exceptions import ObjectDoesNotExist
@@ -18,6 +18,7 @@ from api.users.models import User
 from django.db.models import Q, OuterRef
 from django.db.models.functions import Coalesce
 from .serializers import ChatSerializer, MessageSerializer
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,10 @@ class ChatConsumer(WebsocketConsumer):
     def _parse_message(self, text_data):
         """Parse and validate incoming message."""
         data = json.loads(text_data)
+
+        # print('client receive data: ', json.dumps(data, indent=2))
         # print('client receive data: ', data)
+        
         if not isinstance(data, dict):
             raise ValueError("Message must be a JSON object")
         return data
@@ -148,17 +152,35 @@ class ChatConsumer(WebsocketConsumer):
 
     def _handle_thumbnail_update(self, data):
         """Process thumbnail update requests."""
+
+        user = self.user
+ 
+
         if not data.get('base64') or not data.get('filename'):
             raise ValueError("Missing required thumbnail data")
 
-        image_data = base64.b64decode(data['base64'])
+        
         # image_file = ContentFile(image_data, name=data['filename'])
         # Update user thumbnail
         # self.user.thumbnail.save(data['filename'], image_file, save=True)
 
-         # Resize image with PIL
-        image = Image.open(BytesIO(image_data))
-        image.thumbnail((125, 125))  # Resize to thumbnail
+
+        base64_data = data['base64']
+
+        # Remove metadata header if present
+        if ',' in base64_data:
+            base64_data = base64_data.split(',')[1]
+
+        try:
+            image_data = base64.b64decode(base64_data)
+        except base64.binascii.Error as e:
+            raise ValueError("Invalid base64 data") from e
+
+        try:
+            image = Image.open(BytesIO(image_data))
+            image.thumbnail((125, 125))  # Resize to thumbnail
+        except UnidentifiedImageError:
+            raise ValueError("Cannot identify image file")
 
         # Save image to memory
         output_io = BytesIO()
@@ -169,12 +191,26 @@ class ChatConsumer(WebsocketConsumer):
         # Create a ContentFile from the resized image
         resized_image_file = ContentFile(output_io.read(), name=data['filename'])
 
+        # Check if current thumbnail is not the default
+        current_thumbnail = user.thumbnail.name
+
+        
+        # Delete current thumbnail only if it's a custom uploaded one
+        if current_thumbnail and current_thumbnail.startswith("thumbnails/"):
+            
+            full_path = os.path.join(settings.MEDIA_ROOT, current_thumbnail)
+            if os.path.isfile(full_path):
+                os.remove(full_path)
+            user.thumbnail.delete(save=False)
+
+       
         # Save the resized image
-        self.user.thumbnail.save(data['filename'], resized_image_file, save=True)
+        user.thumbnail.save(data['filename'], resized_image_file, save=True)
 
        
         # Broadcast update
-        serialized = UserSerializer(self.user)
+        serialized = UserSerializer(user)
+
         self._broadcast_to_user('thumbnail', serialized.data)
 
 
@@ -299,7 +335,7 @@ class ChatConsumer(WebsocketConsumer):
             context={'user': user},
             many=True
         )
-        print(serialized_messages.data)
+        # print(serialized_messages.data)
 
         # Get recipient friend
         recipient = connection.sender
@@ -318,7 +354,7 @@ class ChatConsumer(WebsocketConsumer):
         # Compute the next page
         next_page = page + 1 if total_messages > (page + 1) * page_size else None
 
-        print('Pages:', page, next_page)
+        # print('Pages:', page, next_page)
         data = {
             'messages': serialized_messages.data,
             'next': next_page,
