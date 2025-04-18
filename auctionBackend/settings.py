@@ -43,24 +43,17 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['.vercel.app', 'localhost','10.0.2.2', '10.3.80.26','127.0.0.1']  # Not recommended for production!
 
-# CORS_ALLOWED_ORIGIN_REGEXES = [
-#     r"^https://.*\.loca\.lt$",  # Expo Tunnel
-#     r"^https://.*\.ngrok\.io$",  # ngrok
-# ]
 
-# CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all origins
-# CORS_ALLOW_CREDENTIALS = True  # Required for authentication
-
-# Application definition
-
-# ALLOWED_HOSTS = ['*']  # Accepts all hosts (not for production!)
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOW_ALL_ORIGINS = True  # for testing only
 
+SESSION_COOKIE_SAMESITE = "Lax"  # or "None" if accessing from a different domain
+SESSION_COOKIE_SECURE = False  # must be False for HTTP (local dev)
 
 # Daphne
 ASGI_APPLICATION = 'auctionBackend.asgi.application'
@@ -85,7 +78,7 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 EMAIL_PORT = os.getenv('EMAIL_PORT')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS')
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL')
+# EMAIL_USE_SSL s= os.getenv('EMAIL_USE_SSL')
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND')
 
 

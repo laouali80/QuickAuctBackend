@@ -7,13 +7,13 @@ class UserAuthBackend(ModelBackend):
 
     def authenticate(self, request, email=None, password=None, **kwargs):
         """Authenticate client using email and password."""
-        
+        # print("auth: ",email)
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return None  # No client found
         
-        print(check_password(password, user.password))
+        # print(check_password(password, user.password))
 
         if check_password(password, user.password):  # Compare hashed password
             return user

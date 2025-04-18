@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickAuct Account Verification</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        line-height: 1.6;
+        color: #333333;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 0;
+      }
+
+      .email-container {
+        max-width: 600px;
+        margin: 20px auto;
+        background-color: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        background-color: #259e47;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .header img {
+        max-width: 180px;
+        height: auto;
+      }
+
+      .content {
+        padding: 30px;
+      }
+
+      h1 {
+        color: #259e47;
+        font-size: 24px;
+        margin-top: 0;
+      }
+
+      .otp-box {
+        background-color: #f0f8f2;
+        border-left: 4px solid #259e47;
+        padding: 15px;
+        margin: 25px 0;
+        text-align: center;
+      }
+
+      .otp-code {
+        font-size: 28px;
+        font-weight: bold;
+        color: #259e47;
+        letter-spacing: 3px;
+      }
+
+      .signature {
+        margin-top: 30px;
+        border-top: 1px solid #eaeaea;
+        padding-top: 20px;
+      }
+
+      .footer {
+        background-color: #f5f5f5;
+        padding: 20px;
+        text-align: center;
+        font-size: 12px;
+        color: #777777;
+      }
+
+      .social-icons {
+        margin: 15px 0;
+      }
+
+      .social-icons a {
+        display: inline-block;
+        margin: 0 8px;
+        text-decoration: none;
+      }
+
+      .social-icons img {
+        width: 24px;
+        height: 24px;
+      }
+
+      .security-note {
+        background-color: #fff8e6;
+        border-left: 4px solid #ffc107;
+        padding: 12px;
+        margin: 20px 0;
+        font-size: 14px;
+      }
+
+      @media only screen and (max-width: 600px) {
+        .content {
+          padding: 20px;
+        }
+
+        .otp-code {
+          font-size: 24px;
+        }
+
+        h1 {
+          font-size: 20px;
+        }
+
+        .email-container {
+          padding: 10px;
+        }
+
+        .footer {
+          font-size: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="header">
+        <!-- Replace with your logo URL -->
+        <img
+          src="https://via.placeholder.com/180x60/259e47/ffffff?text=QuickAuct"
+          alt="QuickAuct Logo"
+        />
+      </div>
+
+      <div class="content">
+        <h1>Account Verification</h1>
+
+        <p>Hi {{first_name}},</p>
+
+        <p>
+          Thank you for signing up with QuickAuct! To complete your account
+          verification, please use the following One-Time Password (OTP):
+        </p>
+
+        <div class="otp-box">
+          <div>Your verification code is:</div>
+          <div class="otp-code">{{otp}}</div>
+          <div><small>(Valid for {{valid_time}} minutes)</small></div>
+        </div>
+
+        <div class="security-note">
+          <strong>⚠️ Security Notice:</strong> If you did
+          <strong>not</strong> attempt to create a QuickAuct account, please
+          ignore this email or contact us immediately at
+          <a href="mailto:support@quickauct.com">support@quickauct.com</a>.
+        </div>
+
+        <p>
+          <strong>Welcome to QuickAuct!</strong> 🎉<br />
+          We're excited to have you in our community. Start bidding and
+          auctioning with confidence!
+        </p>
+
+        <div class="signature">
+          <p>Best Regards,</p>
+          <p>
+            <strong>Laouali Bachir</strong><br />
+            Founder & CEO, QuickAuct
+          </p>
+        </div>
+
+        <p>
+          <strong>Need Help?</strong><br />
+          📧 <a href="mailto:support@quickauct.com">support@quickauct.com</a
+          ><br />
+          📞 <a href="tel:+2347041444411">+234 704 144 4411</a>
+        </p>
+      </div>
+
+      <div class="footer">
+        <div class="social-icons">
+          <a href="https://facebook.com/quickauct" target="_blank">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/124/124010.png"
+              alt="Facebook"
+            />
+          </a>
+          <a href="https://twitter.com/quickauct" target="_blank">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/124/124021.png"
+              alt="Twitter/X"
+            />
+          </a>
+          <a href="https://instagram.com/quickauct" target="_blank">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/174/174855.png"
+              alt="Instagram"
+            />
+          </a>
+          <a href="https://linkedin.com/company/quickauct" target="_blank">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/174/174857.png"
+              alt="LinkedIn"
+            />
+          </a>
+        </div>
+
+        <p>© {{year}} QuickAuct. All rights reserved.</p>
+        <p>
+          <a href="#">Privacy Policy</a> |
+          <a href="#">Terms of Service</a>
+        </p>
+        <p>
+          QuickAuct Inc.<br />
+          123 Auction Street, Adamawa, Nigeria
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
