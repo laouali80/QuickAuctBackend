@@ -2,6 +2,9 @@ super
 lbid
 laouali1234
 
+laouali
+laouali1234
+
 users
 test
 test1234
@@ -62,3 +65,18 @@ https://www.youtube.com/watch?v=DLKzd3bvgt8
 
    from dotenv import load_dotenv
    load_dotenv() # Load before using any os.getenv()
+
+{"email":"laoualibachir2000@gmail.com","first_name":"LBID"}
+
+email sending with template
+https://www.youtube.com/watch?v=k5aPGb3px-U
+
+{
+"first_name": "test3",
+"last_name": "test3",
+"username": "test3",
+"email": "test3@gmail.com",
+"phone_number": "01232",
+"password": "test1234",
+"aggrement": true
+}

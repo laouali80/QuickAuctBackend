@@ -3,7 +3,6 @@ from django.contrib.auth import authenticate
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from api.users.models import User
-# from .auctions.models import Auction
 from .serializers import UserSerializer, RegisterUserSerializer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -12,8 +11,12 @@ from django.core.mail import send_mail
 from django.conf import settings
 from datetime import datetime, timedelta
 from .utils import generate_otp
-
-
+import os
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.shortcuts import render
+from django.core.mail import EmailMultiAlternatives
+from django.shortcuts import redirect
 
 # Create your views here.
 
@@ -30,10 +33,12 @@ def register_user(request):
     if request.method == "POST":
         # print(request.data)
         serializer = RegisterUserSerializer(data=request.data)
+        # print(serializer.is_valid())
 
         if serializer.is_valid():
             
             user = serializer.save()
+            print(user)
             refresh = RefreshToken.for_user(user)
             # access_token = str(refresh.access_token)
             user_data = UserSerializer(user).data
@@ -72,6 +77,7 @@ def register_user(request):
                     "message": "This request method is not allow.",
                     "statusCode": 400
                 }, status=status.HTTP_400_BAD_REQUEST)
+  
     
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -86,6 +92,7 @@ def login(request):
         
  
         user = authenticate(request, email=email, password=password)
+        print('user: ',authenticate(request, email=email, password=password))
         
         
         if user is not None:
@@ -128,34 +135,54 @@ def login(request):
 @permission_classes([AllowAny])
 def send_otp(request):
     """Send a 4-digit OTP to the email of an unregistered user."""
+    
     email = request.data.get('email')
-    first_name = request.data.get('firstName')
+    first_name = request.data.get('first_name')
 
     if not email:
         return Response({"message": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     otp = generate_otp()
-    valid_until = datetime.now() + timedelta(minutes=30)
+    minutes = 15
+    valid_until = datetime.now() + timedelta(minutes=minutes)
 
     request.session['otp_secret_key'] = otp  # Store OTP in session
     request.session['otp_valid_date'] = str(valid_until)
 
-    print(f'Your OTP is: {otp}')  # Debugging purposes
+    # print(f'Your OTP is: {otp}')  # Debugging purposes
 
-    message = f'Hi {first_name}, your OTP is: {otp}'
+    # message = f'Hi {first_name}, your OTP is: {otp}'
+
+    # print('email: ',settings.EMAIL_HOST_USER)
+
     
+
+    html_content = render_to_string('users/AccountVerification.html', {
+        'first_name': first_name.title(),
+        'otp': otp,
+        'valid_time':minutes,
+        'year': datetime.now().strftime("%Y")
+    })
+    text_content = strip_tags(html_content)  # Fallback text version
     try:
-        send_mail(
-            subject="Verification of Email",
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
+       
+
+        email_msg = EmailMultiAlternatives(
+            subject="QuickAuct Email Verification",
+            body=text_content,
+            from_email=settings.EMAIL_HOST_USER,
+            to=[email]
         )
+        email_msg.attach_alternative(html_content, "text/html")
+        email_msg.send()
+
         return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
     # return Response({otp}, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response({"message": "Failed to send OTP", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({
+            "message": "Failed to send OTP",
+            "error": str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
@@ -163,6 +190,8 @@ def send_otp(request):
 def otp_validation(request):
     """Verify the OTP submitted by the unregistered user."""
     otp = request.data.get('otp')
+
+    # print("otp: ",request.session.get('otp_valid_date'))
 
     if not otp:
         return Response({"message": "OTP is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -178,11 +207,16 @@ def otp_validation(request):
     if datetime.now() > valid_until:
         del request.session['otp_secret_key']
         del request.session['otp_valid_date']
-        return Response({"message": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST)
 
+       
+        return Response({"message": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
     if otp == otp_secret_key:
         del request.session['otp_secret_key']
         del request.session['otp_valid_date']
+
         return Response({"message": "Valid OTP"}, status=status.HTTP_200_OK)
+    
     else:
         return Response({"message": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
