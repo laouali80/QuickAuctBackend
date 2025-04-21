@@ -1,0 +1,15 @@
+{
+  "builds": [
+    {
+      "src": "auctionBackend/wsgi.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdasize": "15mb", "runtime": "python3.12" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "auctionBackend/wsgi.py"
+    }
+  ]
+}
