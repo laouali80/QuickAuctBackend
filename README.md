@@ -80,3 +80,6 @@ https://www.youtube.com/watch?v=k5aPGb3px-U
 "password": "test1234",
 "aggrement": true
 }
+
+vercel
+https://youtu.be/_JoaelVNAWk?si=TBgAZqFP4usQda_e
