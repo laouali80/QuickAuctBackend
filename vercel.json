@@ -8,6 +8,10 @@
   ],
   "routes": [
     {
+      "src": "/static/(.*)",
+      "dest": "auctionBackend/staticfiles/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "auctionBackend/wsgi.py"
     }

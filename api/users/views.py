@@ -25,6 +25,7 @@ from django.shortcuts import redirect
 def welcome(request):
     return Response({'status':'reach'}, status=status.HTTP_201_CREATED)
 
+
 @api_view(['GET','POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -78,7 +79,8 @@ def register_user(request):
                     "statusCode": 400
                 }, status=status.HTTP_400_BAD_REQUEST)
   
-    
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
@@ -126,8 +128,6 @@ def login(request):
                     "message": "This request method is not allow.",
                     "statusCode": 405
                 }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-
 
 
 
@@ -220,3 +220,33 @@ def otp_validation(request):
     
     else:
         return Response({"message": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_location(request):
+    """Update the latest user Location."""
+    location = request.data.get('location')
+
+    print(location)
+    return Response({'location':location}, status=status.HTTP_201_CREATED)
+
+    # request.user.latest_location = location
+
+    # request.user.save()
+
+    # # RefreshToken allows us to create a token for a user
+    # refresh = RefreshToken.for_user(request.user)
+    # user_data = UserSerializer(request.user).data
+
+    # return Response({
+    #     "status": "success",
+    #     "message": "Login successful",
+    #     "data": {
+    #         "tokens":{
+    #             "access": str(refresh.access_token),
+    #             'refresh': str(refresh)
+    #         },
+    #         "user": user_data
+    #     }
+    # }, status=status.HTTP_200_OK)
