@@ -228,25 +228,25 @@ def update_location(request):
     """Update the latest user Location."""
     location = request.data.get('location')
 
-    print(location)
-    return Response({'location':location}, status=status.HTTP_201_CREATED)
+    # print(location)
+    # return Response({'location':location}, status=status.HTTP_201_CREATED)
 
-    # request.user.latest_location = location
+    request.user.latest_location = location
 
-    # request.user.save()
+    request.user.save()
 
-    # # RefreshToken allows us to create a token for a user
-    # refresh = RefreshToken.for_user(request.user)
-    # user_data = UserSerializer(request.user).data
+    # RefreshToken allows us to create a token for a user
+    refresh = RefreshToken.for_user(request.user)
+    user_data = UserSerializer(request.user).data
 
-    # return Response({
-    #     "status": "success",
-    #     "message": "Login successful",
-    #     "data": {
-    #         "tokens":{
-    #             "access": str(refresh.access_token),
-    #             'refresh': str(refresh)
-    #         },
-    #         "user": user_data
-    #     }
-    # }, status=status.HTTP_200_OK)
+    return Response({
+        "status": "success",
+        "message": "Login successful",
+        "data": {
+            "tokens":{
+                "access": str(refresh.access_token),
+                'refresh': str(refresh)
+            },
+            "user": user_data
+        }
+    }, status=status.HTTP_200_OK)
