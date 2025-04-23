@@ -25,6 +25,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     aggrement = models.BooleanField(default=False)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
+    latest_location = models.CharField(max_length=35, blank=True, null=True)
 
     # Django authentication fields
     is_active = models.BooleanField(default=True)  # Required for authentication
