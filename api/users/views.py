@@ -221,24 +221,24 @@ def otp_validation(request):
     else:
         return Response({"message": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
     
-
+# @permission_classes([IsAuthenticated])
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def update_location(request):
     """Update the latest user Location."""
     location = request.data.get('location')
 
-    # print(location)
+    # print(request.user)
     # return Response({'location':location}, status=status.HTTP_201_CREATED)
 
     request.user.latest_location = location
 
     request.user.save()
-
+    
     # RefreshToken allows us to create a token for a user
     refresh = RefreshToken.for_user(request.user)
     user_data = UserSerializer(request.user).data
-
+    
     return Response({
         "status": "success",
         "message": "Login successful",
