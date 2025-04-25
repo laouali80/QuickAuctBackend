@@ -83,3 +83,13 @@ https://www.youtube.com/watch?v=k5aPGb3px-U
 
 vercel
 https://youtu.be/_JoaelVNAWk?si=TBgAZqFP4usQda_e
+
+supa base
+https://youtu.be/IuY-xLNIJXw
+vercel django and supabase realtime
+
+Serializer errors checking
+serializer = AuctionCreateSerializer(data=data, context={'user': user})
+
+print(serializer.is_valid()) # This runs validation
+print('Error while serializing: ', serializer.errors) # This shows actual validation error

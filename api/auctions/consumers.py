@@ -2,13 +2,22 @@ from channels.generic.websocket import WebsocketConsumer
 import json
 from django.contrib.auth import get_user_model
 import jwt
+import base64
 import os
 import logging
 from asgiref.sync import async_to_sync
 from django.db.models import Q
-from .models import Auction
-from .serializers import AuctionSerializer
+from .models import Auction,AuctionImage
+from .serializers import (
+    AuctionSerializer, 
+    AuctionCreateSerializer, 
+    BidCreateSerializer, 
+    BidSerializer,
+    AuctionImageSerializer)
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.files.base import ContentFile
+
+from django.db import transaction
 
 
 logger = logging.getLogger(__name__)
@@ -136,6 +145,7 @@ class AuctionConsumer(WebsocketConsumer):
     def _parse_message(self, text_data):
         """Parse and validate incoming message."""
         data = json.loads(text_data)
+        # print('client receive data: ', json.dumps(data, indent=2))
         # print('client receive data: ', data)
         if not isinstance(data, dict):
             raise ValueError("Message must be a JSON object")
@@ -147,7 +157,7 @@ class AuctionConsumer(WebsocketConsumer):
         handlers = {
             'search': self._handle_search,
             'FetchAuctionsList': self._handle_fetch_auctions_list,
-            # 'message_send':self._handle_message_send,
+            'create_auction':self._handle_create_auction,
             # 'fetchMessagesList':self._handle_fetch_messages_list,
             # 'message_typing': self._handle_message_typing,
         }
@@ -170,6 +180,7 @@ class AuctionConsumer(WebsocketConsumer):
         
 
         self._send_search_results(serialized.data)
+
 
     def _search_auctions(self, query):
         """Perform auction search query."""
@@ -196,6 +207,55 @@ class AuctionConsumer(WebsocketConsumer):
         # print('serialized: ', serialized.data)
         self._broadcast_to_user('auctionsList', serialized.data)
 
+
+    def _handle_create_auction(self, data):
+        user = self.user
+        data = data.get('data')
+        image = data.pop('image', [])
+
+        # Validate image data first before creating auction
+        if not image.get('uri') or not image.get('fileName'):
+            raise ValueError("Missing required thumbnail data")
+
+        try:
+            base64_data = image.get('uri')
+            if ',' in base64_data:
+                base64_data = base64_data.split(',')[1]
+            image_data = base64.b64decode(base64_data)
+        except (base64.binascii.Error, AttributeError) as e:
+            raise ValueError("Invalid base64 image data") from e
+
+        # Wrap everything in a transaction
+        try:
+            # Atomic operations (all succeeds or all fails)
+            # Wrapped the entire operation in transaction.atomic() so if image saving fails, the auction creation is rolled back
+            with transaction.atomic():
+                # Create auction
+                serializer = AuctionCreateSerializer(data=data, context={'user': user})
+                
+                if not serializer.is_valid():
+                    error_msg = "Auction validation failed: " + str(serializer.errors)
+                    raise ValueError(error_msg)
+                
+                new_auction = serializer.save()
+                
+                # Save auction image
+                try:
+                    image_file = ContentFile(image_data, name=image.get('fileName'))
+                    auction_image = AuctionImage(auction=new_auction, image=image_file)
+                    auction_image.save()
+                except Exception as e:
+                    raise ValueError(f"Failed to save auction image: {str(e)}") from e
+                
+                return new_auction
+                
+        except Exception as e:
+            # Log the full error here if needed
+            print(f"Error in auction creation: {str(e)}")
+            raise  # Re-raise the exception after logging    
+       
+        
+        
 
     # ----------------------
     #  Response Methods
