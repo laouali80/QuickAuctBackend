@@ -32,14 +32,13 @@ class ChatSerializer(serializers.ModelSerializer):
         if not obj.latest_content:
             return 'New Connection'
         latest_content = obj.latest_content
-        # latest_content[:50] + ("..." if len(latest_content) > 50 else "")
-        print('content: ', latest_content)
+        
         return latest_content
     
     def get_updated(self, obj):
         """Return the latest updated message"""
         date = obj.latest_created or obj.updated
-        print('date: ',date.isoformat())
+        
         return date.isoformat()
      
 

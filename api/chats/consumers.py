@@ -6,7 +6,6 @@ import base64
 import logging
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
-from django.core.files.base import ContentFile
 from django.core.exceptions import ObjectDoesNotExist
 from channels.generic.websocket import WebsocketConsumer
 from django.contrib.auth import get_user_model

@@ -3,8 +3,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Auction
-from .serializers import AuctionCreateSerializer, AuctionImageSerializer, AuctionSerializer, AuctionTransactionSerializer
+from .models import Auction, Category
+from .serializers import (
+    AuctionCreateSerializer, 
+    AuctionImageSerializer, 
+    AuctionSerializer, 
+    AuctionTransactionSerializer,
+    CategorySerializer)
 
 
 
@@ -121,3 +126,21 @@ def update_auction(request, auctId):
 
     serializer = AuctionSerializer(auction)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_categories(request):
+    """get all categories."""
+
+    categories = Category.objects.all()
+
+    
+    serializer = CategorySerializer(categories, many=True)
+    response_data = {
+            "categories": serializer.data
+        }
+    
+    return Response(response_data, status=status.HTTP_200_OK)
+    
+

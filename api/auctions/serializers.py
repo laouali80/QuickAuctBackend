@@ -11,19 +11,18 @@ from api.auctions.models import (
     AuctionTransaction
 )
 from api.users.serializers import UserSerializer
+from .utils import ConvertEndingTime
 
 
 
 class CategorySerializer(serializers.ModelSerializer):
     # active_auctions_count = serializers.SerializerMethodField()
-   
+    key = serializers.IntegerField(source='id')
+    value = serializers.CharField(source='name')
 
     class Meta:
         model = Category
-        fields = [
-            'id', 
-            'name', 
-        ]
+        fields = ['key', 'value']
     
     def get_active_auctions_count(self, obj):
         return obj.get_active_auctions_count()
@@ -179,10 +178,9 @@ class AuctionTransactionSerializer(serializers.ModelSerializer):
 
 
 class AuctionCreateSerializer(serializers.ModelSerializer):
-    images = serializers.ListField(
-        child=serializers.ImageField(),
-        write_only=True,
-        required=False
+    end_time = serializers.ListField(
+        child=serializers.IntegerField(min_value=0),
+        write_only=True
     )
 
     class Meta:
@@ -197,21 +195,28 @@ class AuctionCreateSerializer(serializers.ModelSerializer):
             'shipping_details',
             'payment_methods',
             'item_condition',
-            'images'
         ]
     
+ 
+    
+    def validate_end_time(self, value):
+        if not isinstance(value, list) or len(value) not in [2, 3, 4]:
+            raise serializers.ValidationError("Invalid end_time format")
+        return ConvertEndingTime(value)
+
     def create(self, validated_data):
-        images_data = validated_data.pop('images', [])
-        auction = Auction.objects.create(**validated_data)
+        # print('I got you: ',self.context['user'])
+        validated_data['seller'] = self.context['user']
+        validated_data['current_price'] = validated_data['starting_price']
         
-        for i, image_data in enumerate(images_data):
-            AuctionImage.objects.create(
-                auction=auction,
-                image=image_data,
-                is_primary=(i == 0)
-            )
-        
+        try:
+            auction = Auction.objects.create(**validated_data)
+            auction.save()
+
+        except IntegrityError as e:
+            raise serializers.ValidationError(str(e))
         return auction
+        
 
 
 class BidCreateSerializer(serializers.ModelSerializer):
