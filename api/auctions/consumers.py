@@ -35,6 +35,8 @@ class AuctionConsumer(WebsocketConsumer):
 
     def connect(self):
         """Authenticate and establish WebSocket connection."""
+        print('reach socket')
+
         try:
             token = self._extract_token()
             if not token:
@@ -45,7 +47,10 @@ class AuctionConsumer(WebsocketConsumer):
                 raise ValueError("Invalid authentication credentials")
 
             self._initialize_connection()
+            self._join_group()
             logger.info(f"✅ Authenticated WebSocket connection for user: {self.user}")
+            logger.info(f"{self.username} joined auction group.")
+
 
         except Exception as e:
             logger.error(f"🚨 WebSocket connection failed: {str(e)}")
@@ -126,10 +131,14 @@ class AuctionConsumer(WebsocketConsumer):
 
     def _join_group(self):
         """Add connection to auction group."""
+
+         # Join common auction broadcast group
         async_to_sync(self.channel_layer.group_add)(
             self.GROUP_NAME,
             self.channel_name
         )
+
+        # self.accept()
 
     def _leave_group(self):
         """Remove connection from auction group."""
@@ -213,6 +222,8 @@ class AuctionConsumer(WebsocketConsumer):
         data = data.get('data')
         image = data.pop('image', [])
 
+        print('reach')
+
         # Validate image data first before creating auction
         if not image.get('uri') or not image.get('fileName'):
             raise ValueError("Missing required thumbnail data")
@@ -246,6 +257,15 @@ class AuctionConsumer(WebsocketConsumer):
                     auction_image.save()
                 except Exception as e:
                     raise ValueError(f"Failed to save auction image: {str(e)}") from e
+                
+                # print('create serializer: ',AuctionSerializer(new_auction,many=False))
+
+                # Serialize the created auction
+                broadcast_data = AuctionSerializer(new_auction,many=False).data
+                
+                
+                # Broadcast to all connected users in the group
+                self._broadcast_group('new_auction', broadcast_data)
                 
                 return new_auction
                 
@@ -286,23 +306,38 @@ class AuctionConsumer(WebsocketConsumer):
     #  Group Broadcast Methods
     # ----------------------
 
-    def broadcast_group(self, event):
-        """Handler for group broadcast messages."""
-        try:
-            self.send(text_data=json.dumps(event['data']))
-        except Exception as e:
-            print(f"Error broadcasting message: {str(e)}")
-
     def _broadcast_to_user(self, source, data):
         """Send data to the user's personal group."""
-        async_to_sync(self.channel_layer.group_send)(
-            self.username,
-            {
-                'type': 'broadcast.message',
-                'source': source,
-                'data': data
-            }
-        )
+
+        try:
+            async_to_sync(self.channel_layer.group_send)(
+                self.username,
+                {
+                    'type': 'broadcast.message',
+                    'source': source,
+                    'data': data
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error broadcasting message: {str(e)}")
+            print(f"Error broadcasting message: {str(e)}")
+    
+    
+    def _broadcast_group(self, source, data):
+        """Handler for group broadcast messages."""
+        try:
+            # Broadcast to all connected users in the group
+            async_to_sync(self.channel_layer.group_send)(
+                self.GROUP_NAME,
+                {
+                    'type': 'broadcast.message',
+                    'source': source,
+                    'data': data
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error broadcasting message: {str(e)}")
+            print(f"Error broadcasting message: {str(e)}")
 
 
     def broadcast_message(self, event):
@@ -314,6 +349,8 @@ class AuctionConsumer(WebsocketConsumer):
             }))
         except Exception as e:
             logger.error(f"Error broadcasting message: {str(e)}")
+
+
 
 
     def auction_creation(self, event):

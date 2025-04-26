@@ -93,3 +93,16 @@ serializer = AuctionCreateSerializer(data=data, context={'user': user})
 
 print(serializer.is_valid()) # This runs validation
 print('Error while serializing: ', serializer.errors) # This shows actual validation error
+
+campus clear out
+
+what's It All About?
+sell your pre-loved items (clothes, books, dorm/apartment gear, etc...)
+Buy cool stuff at student-friendly Prices
+Meet others and support a more sustainable campus
+Graduating? This is a perfect chance to lighten the load before you leave - cash in and clear out!
+
+All students, faculty, and staff are welcome!
+
+email sending and receiving
+https://forum.djangoproject.com/t/best-option-for-sending-receiving-email/33908

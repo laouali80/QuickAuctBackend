@@ -12,7 +12,8 @@ from api.auctions.models import (
 )
 from api.users.serializers import UserSerializer
 from .utils import ConvertEndingTime
-
+from django.utils.timezone import make_aware, is_naive
+from django.utils.dateparse import parse_datetime
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -127,6 +128,7 @@ class AuctionSerializer(serializers.ModelSerializer):
             'has_ended'
         ]
 
+
     def get_highest_bid(self, obj):
         highest_bid = obj.get_highest_bid()
         if highest_bid:
@@ -208,6 +210,7 @@ class AuctionCreateSerializer(serializers.ModelSerializer):
         # print('I got you: ',self.context['user'])
         validated_data['seller'] = self.context['user']
         validated_data['current_price'] = validated_data['starting_price']
+        validated_data['status'] = 'ongoing'
         
         try:
             auction = Auction.objects.create(**validated_data)
