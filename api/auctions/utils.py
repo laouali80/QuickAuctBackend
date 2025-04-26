@@ -1,6 +1,8 @@
 import random
 import string
 import secrets
+from django.utils import timezone
+
 
 def upload_img(instance, filename):
     """This function upload an image to media/thumbnails file"""
@@ -34,7 +36,7 @@ def ConvertEndingTime(endingTime):
     Returns:
         datetime: The future datetime
     """
-    current_datetime = datetime.now()
+    current_datetime = timezone.now()
 
     if not isinstance(endingTime, list) or not all(isinstance(x, int) for x in endingTime):
         raise ValueError("endingTime must be a list of integers")

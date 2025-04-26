@@ -113,14 +113,19 @@ class Auction(models.Model):
     
     @property
     def is_active(self):
-        return self.status == self.Status.ONGOING and self.end_time > timezone.now()
-    
+        
+        now = timezone.now()
+       
+        return (self.status == self.Status.ONGOING and 
+                self.start_time <= now < self.end_time)
     @property
     def has_ended(self):
-        return self.end_time <= timezone.now()
+       
+        return timezone.now() >= self.end_time
     
     @property
     def time_remaining(self):
+        
         if self.has_ended:
             return None
         return self.end_time - timezone.now()

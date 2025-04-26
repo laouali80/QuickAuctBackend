@@ -30,7 +30,7 @@ if os.path.isfile(dotenv_file):
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 
 # ALLOWED_HOSTS = []
@@ -204,12 +204,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static')
-]
+# STATIC_ROOT = BASE_DIR / 'staticfiles'
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, 'static')
+# ]
 
-MEDIAFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# MEDIAFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # Default primary key field type
