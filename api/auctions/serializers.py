@@ -50,6 +50,7 @@ class AuctionImageSerializer(serializers.ModelSerializer):
 class BidSerializer(serializers.ModelSerializer):
     bidder = UserSerializer(read_only=True)
     is_highest_bid = serializers.SerializerMethodField()
+    auction = serializers.CharField(source='auction_id')
     # was_outbid = serializers.SerializerMethodField()
 
     class Meta:
