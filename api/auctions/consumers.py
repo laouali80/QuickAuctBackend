@@ -168,6 +168,7 @@ class AuctionConsumer(WebsocketConsumer):
             'FetchAuctionsList': self._handle_fetch_auctions_list,
             'create_auction':self._handle_create_auction,
             'place_bid':self._handle_place_bid,
+            'watch_auction': self._handle_watch_auction,
             'delete_auction': self._handle_delete_auction,
             'edit_auction': self._handle_edit_auction,
             'close_auction': self._handle_close_auction,
@@ -214,8 +215,6 @@ class AuctionConsumer(WebsocketConsumer):
         auctions = Auction.objects.active().exclude(seller=user).order_by('-created_at')
         
         
-
-        
         # print('auctions: ',auctions)
 
         serialized = AuctionSerializer(auctions ,many=True)
@@ -228,7 +227,7 @@ class AuctionConsumer(WebsocketConsumer):
         data = data.get('data')
         image = data.pop('image', [])
 
-        print('reach')
+        # print('reach', data)
 
         # Validate image data first before creating auction
         if not image.get('uri') or not image.get('fileName'):
@@ -284,20 +283,22 @@ class AuctionConsumer(WebsocketConsumer):
     def _handle_place_bid(self, data):
 
         user = self.user
+        data = data.get('data')
         auction_id = data.get('auction_id')
         current_price = data.get('current_price')
 
-
+        
         try:
             auction = Auction.objects.get(pk=auction_id)
         except Auction.DoesNotExist:
             logger.error(f"Auction {auction_id} not found")
             self._send_error(f"Auction {auction_id} not found")
             return  # stop further execution
-
+        
         # Check if user has already an existing bid
         new_amount = current_price + auction.bid_increment
-        has_bid = Bid.objects.filter(auction=auction, bidder=user).exists()
+        
+        # print(new_amount)
 
         with transaction.atomic():
             try:
@@ -320,7 +321,58 @@ class AuctionConsumer(WebsocketConsumer):
         
          # Serialize and broadcast to group so all connected users see the update
         broadcast_data = AuctionSerializer(auction).data
+        # print(broadcast_data)
         self._broadcast_group('new_bid', broadcast_data)
+
+
+    def _handle_watch_auction(self, data):
+        user = self.user
+        data = data.get('data')
+        auction_id = data.get('auction_id')
+
+        try:
+            auction = Auction.objects.get(pk=auction_id)
+        except Auction.DoesNotExist:
+            logger.error(f"Auction {auction_id} not found")
+            self._send_error(f"Auction {auction_id} not found")
+            return  # stop further execution
+
+        
+        # Check if user is a watcher
+        is_watcher = auction.watchers.filter(pk=user.pk).exists()
+        
+        if is_watcher:
+            auction.watchers.remove(user)           
+        else:
+            auction.watchers.add(user)
+            
+        auction.save()
+
+        # Serialize and broadcast to group so all connected users see the update
+        broadcast_data = AuctionSerializer(auction).data
+        # print(broadcast_data)
+        self._broadcast_to_user('watcher', broadcast_data)
+
+
+    def _handle_delete_auction(self, data):
+        pass
+
+
+    def _handle_edit_auction(self, data):
+        pass
+
+
+    def _handle_close_auction(self, data):
+        pass
+
+
+    def _handle_reopen_auction(self, data):
+        pass
+
+
+    def _handle_report_user(self, data):
+        pass
+
 
 
     # ----------------------
