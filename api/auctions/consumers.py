@@ -168,6 +168,7 @@ class AuctionConsumer(WebsocketConsumer):
             'FetchAuctionsList': self._handle_fetch_auctions_list,
             'create_auction':self._handle_create_auction,
             'place_bid':self._handle_place_bid,
+            'watch_auction': self._handle_watch_auction,
             'delete_auction': self._handle_delete_auction,
             'edit_auction': self._handle_edit_auction,
             'close_auction': self._handle_close_auction,
@@ -213,8 +214,6 @@ class AuctionConsumer(WebsocketConsumer):
 
         auctions = Auction.objects.active().exclude(seller=user).order_by('-created_at')
         
-        
-
         
         # print('auctions: ',auctions)
 
@@ -324,6 +323,35 @@ class AuctionConsumer(WebsocketConsumer):
         broadcast_data = AuctionSerializer(auction).data
         # print(broadcast_data)
         self._broadcast_group('new_bid', broadcast_data)
+
+
+    def _handle_watch_auction(self, data):
+        user = self.user
+        data = data.get('data')
+        auction_id = data.get('auction_id')
+
+        try:
+            auction = Auction.objects.get(pk=auction_id)
+        except Auction.DoesNotExist:
+            logger.error(f"Auction {auction_id} not found")
+            self._send_error(f"Auction {auction_id} not found")
+            return  # stop further execution
+
+        
+        # Check if user is a watcher
+        is_watcher = auction.watchers.filter(pk=user.pk).exists()
+        
+        if is_watcher:
+            auction.watchers.remove(user)           
+        else:
+            auction.watchers.add(user)
+            
+        auction.save()
+
+        # Serialize and broadcast to group so all connected users see the update
+        broadcast_data = AuctionSerializer(auction).data
+        # print(broadcast_data)
+        self._broadcast_to_user('watcher', broadcast_data)
 
 
     def _handle_delete_auction(self, data):

@@ -84,11 +84,12 @@ class AuctionSerializer(serializers.ModelSerializer):
     time_remaining = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
     has_ended = serializers.SerializerMethodField()
-    watchers = serializers.PrimaryKeyRelatedField(
-        many=True, 
-        queryset=User.objects.all(),
-        required=False
-    )
+    watchers = serializers.SerializerMethodField()
+    # watchers = serializers.PrimaryKeyRelatedField(
+    #     many=True, 
+    #     queryset=User.objects.all(),
+    #     required=False
+    # )
 
     class Meta:
         model = Auction
@@ -146,6 +147,9 @@ class AuctionSerializer(serializers.ModelSerializer):
     
     def get_has_ended(self, obj):
         return obj.has_ended
+    
+    def get_watchers(self, obj):
+        return [str(watcher.pk) for watcher in obj.watchers.all()]
     
 
 class AuctionTransactionSerializer(serializers.ModelSerializer):
