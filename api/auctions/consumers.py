@@ -7,7 +7,7 @@ import os
 import logging
 from asgiref.sync import async_to_sync
 from django.db.models import Q
-from .models import Auction,AuctionImage
+from .models import Auction,AuctionImage, Bid
 from .serializers import (
     AuctionSerializer, 
     AuctionCreateSerializer, 
@@ -167,8 +167,12 @@ class AuctionConsumer(WebsocketConsumer):
             'search': self._handle_search,
             'FetchAuctionsList': self._handle_fetch_auctions_list,
             'create_auction':self._handle_create_auction,
-            # 'fetchMessagesList':self._handle_fetch_messages_list,
-            # 'message_typing': self._handle_message_typing,
+            'place_bid':self._handle_place_bid,
+            'delete_auction': self._handle_delete_auction,
+            'edit_auction': self._handle_edit_auction,
+            'close_auction': self._handle_close_auction,
+            'reopen_auction': self._handle_reopen_auction,
+            'report_user': self._handle_report_user,
         }
         return handlers.get(message_type)
 
@@ -204,11 +208,13 @@ class AuctionConsumer(WebsocketConsumer):
     def _handle_fetch_auctions_list(self, data):
         """Fetches the list of chats the user had."""
         user = self.user
+        page = data.get('page')
+        page_size = 6
 
-        auctions =  Auction.objects.filter(
-            status='ongoing'
-        ).exclude(seller=user).order_by('-created_at')
+        auctions = Auction.objects.active().exclude(seller=user).order_by('-created_at')
         
+        
+
         
         # print('auctions: ',auctions)
 
@@ -274,8 +280,48 @@ class AuctionConsumer(WebsocketConsumer):
             print(f"Error in auction creation: {str(e)}")
             raise  # Re-raise the exception after logging    
        
+
+    def _handle_place_bid(self, data):
+
+        user = self.user
+        auction_id = data.get('auction_id')
+        current_price = data.get('current_price')
+
+
+        try:
+            auction = Auction.objects.get(pk=auction_id)
+        except Auction.DoesNotExist:
+            logger.error(f"Auction {auction_id} not found")
+            self._send_error(f"Auction {auction_id} not found")
+            return  # stop further execution
+
+        # Check if user has already an existing bid
+        new_amount = current_price + auction.bid_increment
+        has_bid = Bid.objects.filter(auction=auction, bidder=user).exists()
+
+        with transaction.atomic():
+            try:
+                bid, created = Bid.objects.get_or_create(
+                    auction=auction,
+                    bidder=user,
+                    defaults={'amount': new_amount}
+                )
+                if not created:
+                    bid.amount = new_amount
+                    bid.save()
+
+                auction.current_price = new_amount
+                auction.save()
+
+            except Exception as e:
+                logger.exception("Error while placing bid")
+                self._send_error("Failed to place bid.")
+                return
         
-        
+         # Serialize and broadcast to group so all connected users see the update
+        broadcast_data = AuctionSerializer(auction).data
+        self._broadcast_group('new_bid', broadcast_data)
+
 
     # ----------------------
     #  Response Methods

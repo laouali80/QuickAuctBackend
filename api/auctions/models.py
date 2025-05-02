@@ -23,7 +23,22 @@ class Category(models.Model):
 
 
 
+class AuctionQuerySet(models.QuerySet):
+    """Customs queries functions"""
+    def active(self):
+        """To query auctions that are ongoing, is_active and not has_end"""
+        now = timezone.now()
+        return self.filter(
+            status=Auction.Status.ONGOING,
+            start_time__lte=now,
+            end_time__gt=now
+        )
+
 class Auction(models.Model):
+
+    objects = AuctionQuerySet.as_manager()
+
+
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Draft'
         ONGOING = 'ongoing', 'Ongoing'
