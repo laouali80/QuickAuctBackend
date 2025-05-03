@@ -34,6 +34,16 @@ class AuctionQuerySet(models.QuerySet):
             end_time__gt=now
         )
 
+    def likes(self,user):
+        """To query auctions that are liked(watched) by a user"""
+        now = timezone.now()
+        return self.filter(
+            status=Auction.Status.ONGOING,
+            start_time__lte=now,
+            end_time__gt=now,
+            watchers=user
+        )
+
 class Auction(models.Model):
 
     objects = AuctionQuerySet.as_manager()

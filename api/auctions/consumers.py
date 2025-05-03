@@ -175,6 +175,7 @@ class AuctionConsumer(WebsocketConsumer):
             'reopen_auction': self._handle_reopen_auction,
             'report_user': self._handle_report_user,
             'load_more': self._handle_fetch_auctions_list,
+            'likesAuctions': self._handle_fetch_likes_auctions
         }
         return handlers.get(message_type)
 
@@ -230,7 +231,7 @@ class AuctionConsumer(WebsocketConsumer):
 
         next_page = page + 1 if has_next else None
 
-        print(page != 1)
+      
         self._broadcast_to_user('auctionsList', {
             'auctions': serialized.data,
             'nextPage': next_page,
@@ -238,7 +239,6 @@ class AuctionConsumer(WebsocketConsumer):
         })
 
         
-
     def _handle_create_auction(self, data):
         user = self.user
         data = data.get('data')
@@ -373,6 +373,40 @@ class AuctionConsumer(WebsocketConsumer):
 
     def _handle_delete_auction(self, data):
         pass
+
+
+    def _handle_fetch_likes_auctions(self, data):
+
+        user = self.user
+        request_data = data.get('data', {})
+        page = request_data.get('page', 1)
+        page_size = 5
+
+        
+
+        start = (page - 1) * page_size
+        end = page * page_size + 1  # Fetch one extra to check for next page
+
+        # Base queryset: exclude the seller's own auctions
+        base_qs = Auction.objects.likes(user).order_by('-created_at')
+
+        # print(base_qs)
+
+        results = list(base_qs[start:end])
+        has_next = len(results) > page_size
+
+        paginated_auctions = results[:page_size]  # Trim the extra item if it exists
+        # print('reach: ', page, paginated_auctions)
+        serialized = AuctionSerializer(paginated_auctions, many=True)
+
+        next_page = page + 1 if has_next else None
+
+      
+        self._broadcast_to_user('likesAuctions', {
+            'auctions': serialized.data,
+            'nextPage': next_page,
+            'loaded': page != 1,
+        })
 
 
     def _handle_edit_auction(self, data):
