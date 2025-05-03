@@ -174,8 +174,10 @@ class AuctionConsumer(WebsocketConsumer):
             'close_auction': self._handle_close_auction,
             'reopen_auction': self._handle_reopen_auction,
             'report_user': self._handle_report_user,
+            'load_more': self._handle_fetch_auctions_list,
         }
         return handlers.get(message_type)
+
 
     def _handle_search(self, data):
         """Process auction search requests."""
@@ -207,20 +209,35 @@ class AuctionConsumer(WebsocketConsumer):
     
 
     def _handle_fetch_auctions_list(self, data):
-        """Fetches the list of chats the user had."""
+        """Fetches the list of auctions for the user using over-fetching to avoid count()."""
+
         user = self.user
-        page = data.get('page')
-        page_size = 6
+        request_data = data.get('data', {})
+        page = request_data.get('page', 1)
+        page_size = 5
 
-        auctions = Auction.objects.active().exclude(seller=user).order_by('-created_at')
+        start = (page - 1) * page_size
+        end = page * page_size + 1  # Fetch one extra to check for next page
+
+        # Base queryset: exclude the seller's own auctions
+        base_qs = Auction.objects.active().exclude(seller=user).order_by('-created_at')
+
+        results = list(base_qs[start:end])
+        has_next = len(results) > page_size
+
+        paginated_auctions = results[:page_size]  # Trim the extra item if it exists
+        serialized = AuctionSerializer(paginated_auctions, many=True)
+
+        next_page = page + 1 if has_next else None
+
+        print(page != 1)
+        self._broadcast_to_user('auctionsList', {
+            'auctions': serialized.data,
+            'nextPage': next_page,
+            'loaded': page != 1,
+        })
+
         
-        
-        # print('auctions: ',auctions)
-
-        serialized = AuctionSerializer(auctions ,many=True)
-        # print('serialized: ', serialized.data)
-        self._broadcast_to_user('auctionsList', serialized.data)
-
 
     def _handle_create_auction(self, data):
         user = self.user
