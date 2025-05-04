@@ -176,7 +176,8 @@ class AuctionConsumer(WebsocketConsumer):
             'report_user': self._handle_report_user,
             'load_more': self._handle_fetch_auctions_list,
             'likesAuctions': self._handle_fetch_likes_auctions,
-            'bidsAuctions':self._handle_fetch_bids_auctions,
+            'bidsAuctions': self._handle_fetch_bids_auctions,
+            'salesAuctions': self._handle_fetch_sales_auctions,
         }
         return handlers.get(message_type)
 
@@ -421,13 +422,14 @@ class AuctionConsumer(WebsocketConsumer):
         start = (page - 1) * page_size
         end = page * page_size + 1  # Fetch one extra to check for next page
 
-        # users bids
-        user_bids = Bid.objects.for_user(user).order_by('-created_at')
-        
+        # users latest bids auctions
+        auctions = Auction.objects.user_latest_bids(user)
 
-        print(user_bids)
+         # auctions = Auction.objects.filter(id__in=auction_ids)
 
-        results = list(user_bids[start:end])
+        # print('_handle_fetch_bids_auctions: ',auctions)
+
+        results = list(auctions[start:end])
         has_next = len(results) > page_size
 
         paginated_auctions = results[:page_size]  # Trim the extra item if it exists
@@ -443,6 +445,41 @@ class AuctionConsumer(WebsocketConsumer):
             'loaded': page != 1,
         })
 
+
+    def _handle_fetch_sales_auctions(self, data):
+
+        user = self.user
+        request_data = data.get('data', {})
+        page = request_data.get('page', 1)
+        page_size = 5
+        
+
+        start = (page - 1) * page_size
+        end = page * page_size + 1  # Fetch one extra to check for next page
+
+        # users sales auctions
+        user_sales = Auction.objects.sales(user).order_by('-created_at')
+        
+
+        # print('_handle_fetch_sales_auctions: ',user_sales)
+
+        results = list(user_sales[start:end])
+        has_next = len(results) > page_size
+
+        paginated_auctions = results[:page_size]  # Trim the extra item if it exists
+        # print('reach: ', page, paginated_auctions)
+        serialized = AuctionSerializer(paginated_auctions, many=True)
+
+        next_page = page + 1 if has_next else None
+
+      
+        self._broadcast_to_user('salesAuctions', {
+            'auctions': serialized.data,
+            'nextPage': next_page,
+            'loaded': page != 1,
+        })
+
+    
     def _handle_edit_auction(self, data):
         pass
 
