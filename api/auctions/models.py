@@ -44,6 +44,8 @@ class AuctionQuerySet(models.QuerySet):
             watchers=user
         )
 
+
+    
 class Auction(models.Model):
 
     objects = AuctionQuerySet.as_manager()
@@ -177,8 +179,15 @@ class AuctionImage(models.Model):
         return f"Image for {self.auction.title}"  
 
 
+class BidQuerySet(models.QuerySet):
+    def for_user(self, user):
+        """To query auctions that the user bids"""
+        return self.filter(bidder=user).select_related("auction")
 
 class Bid(models.Model):
+
+    objects = BidQuerySet.as_manager()
+
     auction = models.ForeignKey(
         Auction, 
         on_delete=models.CASCADE, 
