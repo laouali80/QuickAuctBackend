@@ -30,9 +30,6 @@ creation
 "password": "test"
 }
 
-A JSON Web Token authentication plugin for the Django REST Framework.
-https://django-rest-framework-simplejwt.readthedocs.io/en/latest/
-
 create your own .env
 
 SECRET_KEY = ''
@@ -51,13 +48,32 @@ JWT_ALGORITHM = "",
 ACCESS_TOKEN_EXPIRE_MINUTES =
 REFRESH_TOKEN_EXPIRE_TIME =
 
+**_Resources_**
+
+A JSON Web Token authentication plugin for the Django REST Framework.
+https://django-rest-framework-simplejwt.readthedocs.io/en/latest/
+
+Redis setup
+https://www.youtube.com/watch?v=DLKzd3bvgt8
+
+email sending with template
+https://www.youtube.com/watch?v=k5aPGb3px-U
+
+vercel
+https://youtu.be/_JoaelVNAWk?si=TBgAZqFP4usQda_e
+
+supa base
+https://youtu.be/IuY-xLNIJXw
+vercel django and supabase realtime
+
+email sending and receiving
+https://forum.djangoproject.com/t/best-option-for-sending-receiving-email/33908
+
+**_Documentation_**
 to generate a JWT_SECRETE_KEY
 
 > > > openssl rand -hex 32
 > > > 6f476259e482ea14fa88e35faa2d2504c3727f87442517fb1de5440520fa29e2
-
-Redis setup
-https://www.youtube.com/watch?v=DLKzd3bvgt8
 
 1. Check if Redis is Already Running
    Run the following command in Command Prompt (cmd):
@@ -67,9 +83,6 @@ https://www.youtube.com/watch?v=DLKzd3bvgt8
    load_dotenv() # Load before using any os.getenv()
 
 {"email":"laoualibachir2000@gmail.com","first_name":"LBID"}
-
-email sending with template
-https://www.youtube.com/watch?v=k5aPGb3px-U
 
 {
 "first_name": "test3",
@@ -81,28 +94,8 @@ https://www.youtube.com/watch?v=k5aPGb3px-U
 "aggrement": true
 }
 
-vercel
-https://youtu.be/_JoaelVNAWk?si=TBgAZqFP4usQda_e
-
-supa base
-https://youtu.be/IuY-xLNIJXw
-vercel django and supabase realtime
-
 Serializer errors checking
 serializer = AuctionCreateSerializer(data=data, context={'user': user})
 
 print(serializer.is_valid()) # This runs validation
 print('Error while serializing: ', serializer.errors) # This shows actual validation error
-
-campus clear out
-
-what's It All About?
-sell your pre-loved items (clothes, books, dorm/apartment gear, etc...)
-Buy cool stuff at student-friendly Prices
-Meet others and support a more sustainable campus
-Graduating? This is a perfect chance to lighten the load before you leave - cash in and clear out!
-
-All students, faculty, and staff are welcome!
-
-email sending and receiving
-https://forum.djangoproject.com/t/best-option-for-sending-receiving-email/33908
