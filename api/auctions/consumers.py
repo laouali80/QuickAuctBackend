@@ -176,7 +176,8 @@ class AuctionConsumer(WebsocketConsumer):
             'report_user': self._handle_report_user,
             'load_more': self._handle_fetch_auctions_list,
             'likesAuctions': self._handle_fetch_likes_auctions,
-            'bidsAuctions':self._handle_fetch_bids_auctions,
+            'bidsAuctions': self._handle_fetch_bids_auctions,
+            'salesAuctions': self._handle_fetch_sales_auctions,
         }
         return handlers.get(message_type)
 
@@ -421,13 +422,14 @@ class AuctionConsumer(WebsocketConsumer):
         start = (page - 1) * page_size
         end = page * page_size + 1  # Fetch one extra to check for next page
 
-        # users bids
-        user_bids = Bid.objects.for_user(user).order_by('-created_at')
-        
+        # users latest bids auctions
+        auctions = Auction.objects.user_latest_bids(user)
 
-        print(user_bids)
+         # auctions = Auction.objects.filter(id__in=auction_ids)
 
-        results = list(user_bids[start:end])
+        # print('_handle_fetch_bids_auctions: ',auctions)
+
+        results = list(auctions[start:end])
         has_next = len(results) > page_size
 
         paginated_auctions = results[:page_size]  # Trim the extra item if it exists
@@ -443,6 +445,41 @@ class AuctionConsumer(WebsocketConsumer):
             'loaded': page != 1,
         })
 
+
+    def _handle_fetch_sales_auctions(self, data):
+
+        user = self.user
+        request_data = data.get('data', {})
+        page = request_data.get('page', 1)
+        page_size = 5
+        
+
+        start = (page - 1) * page_size
+        end = page * page_size + 1  # Fetch one extra to check for next page
+
+        # users sales auctions
+        user_sales = Auction.objects.sales(user).order_by('-created_at')
+        
+
+        # print('_handle_fetch_sales_auctions: ',user_sales)
+
+        results = list(user_sales[start:end])
+        has_next = len(results) > page_size
+
+        paginated_auctions = results[:page_size]  # Trim the extra item if it exists
+        # print('reach: ', page, paginated_auctions)
+        serialized = AuctionSerializer(paginated_auctions, many=True)
+
+        next_page = page + 1 if has_next else None
+
+      
+        self._broadcast_to_user('salesAuctions', {
+            'auctions': serialized.data,
+            'nextPage': next_page,
+            'loaded': page != 1,
+        })
+
+    
     def _handle_edit_auction(self, data):
         pass
 
@@ -536,174 +573,7 @@ class AuctionConsumer(WebsocketConsumer):
 
 
 
-    def auction_creation(self, event):
-        """Broadcast new auction to group."""
-        self.send(text_data=json.dumps({
-            'type': 'auction_created',
-            'data': event['message']
-        }))
 
      
 
 
-
-
-# class AuctionConsumer(WebsocketConsumer):
-#     def connect(self):
-#         """The first function to connect the user to websocket connection."""
-
-#         query_string = self.scope["query_string"].decode()
-#         token = query_string.split("tokens=")[-1] if "tokens=" in query_string else None
-
-#         print(f"🔑 Received Token: {token}")  # Debugging
-
-#         if token:
-#             self.user = self.authenticate_token(token)
-#             if self.user:
-
-#                 # create a room group name of auction
-#                 self.room_group_name = 'auction'
-
-#                 # Create a room group of auction where every connected client will receive the auctions
-#                 async_to_sync(self.channel_layer.group_add)(
-#                     self.room_group_name,   # this is for the group name
-#                     self.channel_name       # this is to add any user to this channel
-#                 )
-                
-#                 # This is to accept the client connection
-#                 self.accept()
-
-#                 # this is to send a message to anyone connect 
-#                 # self.send(text_data=json.dumps({
-#                 #     'type':'connection_established',
-#                 #     'message': 'You are now connected'
-#                 # }))
-                
-#                 print(f"✅ Authenticated WebSocket: {self.user}")
-#                 return
-            
-#         print("🚨 WebSocket rejected: Invalid token!")
-#         self.close()
- 
-#     def disconnect(self, close_code):
-#         """This method is call when a user disconnect from the connection"""
-#         # Leave room/group
-#         async_to_sync(self.channel_layer.group_discard)(
-#             self.room_group_name, self.channel_name
-#         )
-        
-
-
-#     def authenticate_token(self, token):
-#         User = get_user_model()
-       
-#         try:
-#             payload = jwt.decode(token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")], options={"verify_signature": False})
-#             print(payload["user_id"])
-#             # print(User.objects.get(pk=payload["user_id"]))
-#             return User.objects.get(pk=payload["user_id"])
-#         except jwt.ExpiredSignatureError:
-#             print("🚨 Token expired")
-#         except jwt.DecodeError:
-#             print("🚨 Token invalid")
-#         except User.DoesNotExist:
-#             print("🚨 User not found")
-#         return None
-    
-#     #---------------------
-#     #       HANDLE REQUEST
-#     #---------------------
-
-#     def receive(self, text_data):
-#         """This function is called when we receive data/message from client."""
-
-#         # receive data/message from connected client
-#         data = json.loads(text_data)
-#         data_source = data.get('source')
-     
-
-#         # Pretty print python dict
-#         # print('receive', json.dumps(auction_data, index=2))
-
-#         # Search / filter auctions
-#         if data_source == 'search':
-#             self.receive_search(data)
-
-
-#         # this is to broadcast the message to each connected user
-#         # async_to_sync(self.channel_layer.group_send)(
-#         #     self.room_group_name,
-#         #     {
-#         #         'type': 'auction_creation',
-#         #         'message': auction_data
-#         #     }
-#         # )
-
-#     def receive_search(self, data):
-#         """"""
-#         query = data.get('query')
-
-#         # Get auction(s) from query search term
-#         auctions = Auction.objects.filter(
-#             Q(title__istartswith=query) |  # Case-insensitive starts with
-#             Q(title__icontains=query)      # Case-insensitive contains
-#         ).exclude(
-#             seller=self.user
-#         )
-#         # .annotate(
-#         #     pen
-#         # )
-
-#         # serialize results
-#         serialized = AuctionSerializer(auctions, many=True)
-#         # Send search results back to the user
-#         self.send_group(self.username, 'search', serialized.data)
-
-
-#     def auction_creation(self, event):
-#         """This method is to broadcast a created auction to each connected user."""
-
-#         auction = event['message']
-
-#         self.send(text_data=json.dumps({
-#             'type':'auction',
-#             'message': auction
-#         }))
-
-#        #-----------------------------------
-#     #      catch/all broadcast to client
-#     #------------------------------------
-
-
-#     def send_group(self, group, source, data):
-#         """This method broadcast data to client."""
-
-#         response = {
-#             'type': 'broadcast_group',  # this type 'broadcast_group' is always a function that this send_group method will call 
-#             'source':source,
-#             'data': data
-#         }
-
-#         # send to group name which is username, response contains the of information of the message
-#         async_to_sync(self.channel_layer.group_send)(
-#             group, response
-#         )
-
-#     def broacast_group(self, data):
-#         """This function is always called based on the type of send_group method"""
-#         """
-#         data:
-#             - type: 'broadcast_group'
-#             - source: where it originated from
-#             - data: what ever you want to send as a dict
-#         """
-
-#         # we pop type because it is only usefull for the sake of calling this method
-#         data.pop('type')
-
-#         """
-#         return data(data that user will receive):
-#             - source: where it originated from
-#             - data: what ever you want to send as a ict
-#         """
-#         self.send(text_data=json.dumps(data))

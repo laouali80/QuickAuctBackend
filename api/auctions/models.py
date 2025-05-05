@@ -4,6 +4,7 @@ from api.users.models import User
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 from .utils import upload_img
+from django.db.models import OuterRef, Subquery
 # Create your models here.
 
 
@@ -43,7 +44,26 @@ class AuctionQuerySet(models.QuerySet):
             end_time__gt=now,
             watchers=user
         )
+    
+    def user_latest_bids(self, user):
+        """Return auctions bid on by user, annotated with latest user bid time."""
+        user_bids = Bid.objects.filter(
+            auction=OuterRef('pk'),
+            bidder=user
+        ).order_by('-placed_at')
 
+        return (
+            self.filter(id__in=Bid.objects.filter(bidder=user).values("auction_id"))
+            .annotate(latest_user_bid=Subquery(user_bids.values('placed_at')[:1]))
+            .order_by('-latest_user_bid')
+        )
+
+    def sales(self,user):
+        """To query user auctions sales"""
+        
+        return self.filter(
+            seller=user
+        )
 
     
 class Auction(models.Model):
@@ -179,14 +199,15 @@ class AuctionImage(models.Model):
         return f"Image for {self.auction.title}"  
 
 
-class BidQuerySet(models.QuerySet):
-    def for_user(self, user):
-        """To query auctions that the user bids"""
-        return self.filter(bidder=user).select_related("auction")
+
+# class BidQuerySet(models.QuerySet):
+#     def for_user(self, user):
+#         """To query auctions that the user bids"""
+#         return self.filter(bidder=user).select_related("auction")
 
 class Bid(models.Model):
 
-    objects = BidQuerySet.as_manager()
+    # objects = BidQuerySet.as_manager()
 
     auction = models.ForeignKey(
         Auction, 
