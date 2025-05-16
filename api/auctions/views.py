@@ -132,7 +132,7 @@ def update_auction(request, auctId):
 @permission_classes([AllowAny])
 def get_categories(request):
     """get all categories."""
-
+    # print('call')
     categories = Category.objects.all()
 
     

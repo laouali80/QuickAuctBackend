@@ -99,3 +99,5 @@ serializer = AuctionCreateSerializer(data=data, context={'user': user})
 
 print(serializer.is_valid()) # This runs validation
 print('Error while serializing: ', serializer.errors) # This shows actual validation error
+
+https://medium.com/@bhairabpatra.iitd/env-file-in-react-js-09d11dc77924
