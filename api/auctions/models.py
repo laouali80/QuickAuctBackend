@@ -34,6 +34,7 @@ class AuctionQuerySet(models.QuerySet):
             start_time__lte=now,
             end_time__gt=now
         )
+    
 
     def likes(self,user):
         """To query auctions that are liked(watched) by a user"""

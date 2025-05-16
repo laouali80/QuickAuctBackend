@@ -16,7 +16,7 @@ from .serializers import (
     AuctionImageSerializer)
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.base import ContentFile
-
+from django.db.models import Count
 from django.db import transaction
 
 
@@ -165,7 +165,7 @@ class AuctionConsumer(WebsocketConsumer):
         """Get appropriate handler for message type."""
         handlers = {
             'search': self._handle_search,
-            'FetchAuctionsList': self._handle_fetch_auctions_list,
+            'FetchAuctionsListByCategory': self._handle_fetch_auctions_list_by_category,
             'create_auction':self._handle_create_auction,
             'place_bid':self._handle_place_bid,
             'watch_auction': self._handle_watch_auction,
@@ -174,7 +174,7 @@ class AuctionConsumer(WebsocketConsumer):
             'close_auction': self._handle_close_auction,
             'reopen_auction': self._handle_reopen_auction,
             'report_user': self._handle_report_user,
-            'load_more': self._handle_fetch_auctions_list,
+            'load_more': self._handle_fetch_auctions_list_by_category,
             'likesAuctions': self._handle_fetch_likes_auctions,
             'bidsAuctions': self._handle_fetch_bids_auctions,
             'salesAuctions': self._handle_fetch_sales_auctions,
@@ -211,29 +211,65 @@ class AuctionConsumer(WebsocketConsumer):
         ).exclude(seller=self.user)
     
 
-    def _handle_fetch_auctions_list(self, data):
-        """Fetches the list of auctions for the user using over-fetching to avoid count()."""
-
+    def _handle_fetch_auctions_list_by_category(self, data):
+        """Fetches a filtered list of auctions using optional filters."""
         user = self.user
         request_data = data.get('data', {})
+       
+        category = request_data.get('category')
+        price = request_data.get('price')
+        item_condition = request_data.get('itemCondition')
+        popularity = request_data.get('popularity')
+        posting_time = request_data.get('postingTime')
+
         page = request_data.get('page', 1)
         page_size = 5
-
         start = (page - 1) * page_size
-        end = page * page_size + 1  # Fetch one extra to check for next page
+        end = page * page_size + 1  # Fetch one extra to detect next page
 
-        # Base queryset: exclude the seller's own auctions
-        base_qs = Auction.objects.active().exclude(seller=user).order_by('-created_at')
+         # Base queryset: exclude the seller's own auctions
+        base_qs = Auction.objects.active().exclude(seller=user)
+
+        # print("reach ", category)
+        # Category filter
+        if category and category.get("value") != "All":
+            print("reach ")
+
+            base_qs = base_qs.filter(category__id=category["key"])
+
+            # print("auctions: ",base_qs)
+
+        # Price sorting
+        if price == "asc":
+            base_qs = base_qs.order_by("current_price")
+        elif price == "desc":
+            base_qs = base_qs.order_by("-current_price")
+
+        # Item condition filter
+        if item_condition:
+            base_qs = base_qs.filter(item_condition=item_condition)
+
+        # Popularity sorting
+        if popularity == "mostLikes":
+            base_qs = base_qs.annotate(num_watchers=Count("watchers")).order_by("-num_watchers")
+        elif popularity == "mostBids":
+            base_qs = base_qs.annotate(num_bids=Count("bid")).order_by("-num_bids")
+
+        # Posting time sorting
+        if posting_time == "newest":
+            base_qs = base_qs.order_by("-created_at")
+        elif posting_time == "oldest":
+            base_qs = base_qs.order_by("created_at")
+
+        # print("auctions: ",base_qs)
 
         results = list(base_qs[start:end])
         has_next = len(results) > page_size
+        paginated = results[:page_size]
 
-        paginated_auctions = results[:page_size]  # Trim the extra item if it exists
-        serialized = AuctionSerializer(paginated_auctions, many=True)
-
+        serialized = AuctionSerializer(paginated, many=True)
         next_page = page + 1 if has_next else None
 
-      
         self._broadcast_to_user('auctionsList', {
             'auctions': serialized.data,
             'nextPage': next_page,
