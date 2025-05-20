@@ -42,27 +42,27 @@ def get_auction(request, auctId):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@api_view(['POST', 'GET'])
-@permission_classes([AllowAny])
-def get_auctions(request):
-    """get all user auctions."""
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_auctions(request):
+    """get user own auctions."""
 
     if request.method == 'GET':
-        auctions = Auction.objects.all()
-
         
-        serializer = AuctionSerializer(auctions, many=True)
-        response_data = {
-                "auctions": serializer.data
-            }
+        print("make request: ",request.user)
         
-        return Response(response_data, status=status.HTTP_200_OK)
+        # serializer = AuctionSerializer(auctions, many=True)
+        # response_data = {
+        #         "auctions": serializer.data
+        #     }
         
-    return Response({
-        "status": "Bad Request",
-        "message": "Client error",
-        "statusCode": 400
-    }, status=status.HTTP_400_BAD_REQUEST)
+        return Response('reach', status=status.HTTP_200_OK)
+        
+    # return Response({
+    #     "status": "Bad Request",
+    #     "message": "Client error",
+    #     "statusCode": 400
+    # }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['PATCH'])
