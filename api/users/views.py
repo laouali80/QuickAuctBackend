@@ -2,6 +2,8 @@ from django.shortcuts import redirect
 from django.contrib.auth import authenticate
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from api.users.models import User
 from .serializers import UserSerializer, RegisterUserSerializer
 from rest_framework.decorators import api_view, permission_classes
@@ -129,6 +131,32 @@ def login(request):
                     "statusCode": 405
                 }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def refreshToken(request):
+    """
+    Accepts a refresh token and returns a new access token (and optionally a new refresh token if ROTATE is enabled).
+    """
+    
+    serializer = TokenRefreshSerializer(data=request.data)
+    # print(serializer.is_valid())
+    try:
+        serializer.is_valid(raise_exception=True)
+    except TokenError as e:
+        return Response({
+            "status": "error",
+            "message": "Token refresh failed",
+            "details": e.args[0]
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+    # print('New tokens: ',serializer.validated_data)
+    return Response({
+        "status": "success",
+        "message": "Token refreshed",
+        "data": serializer.validated_data
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

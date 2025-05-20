@@ -21,6 +21,11 @@ login
 "password": "test"
 }
 
+{
+"email": "work@gmail.com",
+"password": "work12345"
+}
+
 creation
 {
 "first_name": "test",
