@@ -81,7 +81,7 @@ class AuctionSerializer(serializers.ModelSerializer):
     images = AuctionImageSerializer(many=True, read_only=True)
     bids = BidSerializer(many=True, read_only=True)
     highest_bid = serializers.SerializerMethodField()
-    time_remaining = serializers.SerializerMethodField()
+    duration = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
     has_ended = serializers.SerializerMethodField()
     watchers = serializers.SerializerMethodField()
@@ -115,7 +115,7 @@ class AuctionSerializer(serializers.ModelSerializer):
             'images',
             'bids',
             'highest_bid',
-            'time_remaining',
+            'duration',
             'is_active',
             'has_ended'
         ]
@@ -125,7 +125,7 @@ class AuctionSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'highest_bid',
-            'time_remaining',
+            'duration',
             'is_active',
             'has_ended'
         ]
@@ -137,10 +137,24 @@ class AuctionSerializer(serializers.ModelSerializer):
             return BidSerializer(highest_bid).data
         return None
     
-    def get_time_remaining(self, obj):
-        if obj.time_remaining:
-            return str(obj.time_remaining)
-        return None
+    def get_duration(self, obj):
+        duration = obj.duration
+        days = duration.days
+        seconds = duration.seconds
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+
+        parts = []
+
+        if days:
+            parts.append(f"{days} day{'s' if days > 1 else ''}")
+        if hours and not days:
+            parts.append(f"{hours} hour{'s' if hours > 1 else ''}")
+        if minutes and not days and not hours:
+            parts.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
+
+        return " ".join(parts) if parts else "Less than a minute"
+        
     
     def get_is_active(self, obj):
         return obj.is_active
