@@ -172,11 +172,8 @@ class Auction(models.Model):
         return timezone.now() >= self.end_time
     
     @property
-    def time_remaining(self):
-        
-        if self.has_ended:
-            return None
-        return self.end_time - timezone.now()
+    def duration(self):
+        return self.end_time - self.start_time
     
     def get_highest_bid(self):
         return self.bids.order_by('-amount').first()
