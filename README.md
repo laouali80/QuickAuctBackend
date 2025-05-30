@@ -35,6 +35,16 @@ creation
 "password": "test"
 }
 
+{
+"first_name": "test",
+"last_name": "test",
+"username": "test1",
+"email": "test@gmail.com",
+"phone_number": "07070707",
+"password": "test1234",
+"aggrement":true
+}
+
 create your own .env
 
 SECRET_KEY = ''

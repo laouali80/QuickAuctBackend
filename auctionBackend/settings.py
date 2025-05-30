@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 import dotenv
+import dj_database_url
+from decouple import config 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,11 +29,8 @@ if os.path.isfile(dotenv_file):
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
+# SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = config('SECRET_KEY')
 
 # ALLOWED_HOSTS = []
 # ALLOWED_HOSTS = [ 
@@ -76,14 +75,20 @@ MEDIA_URL = '/media/'
 
 
 # Email sending config
-EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-EMAIL_PORT = os.getenv('EMAIL_PORT')
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS')
-# EMAIL_USE_SSL s= os.getenv('EMAIL_USE_SSL')
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND')
+# EMAIL_HOST = os.getenv('EMAIL_HOST')
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+# EMAIL_PORT = os.getenv('EMAIL_PORT')
+# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS')
+# EMAIL_BACKEND = os.getenv('EMAIL_BACKEND')
 
+
+EMAIL_HOST = config('EMAIL_HOST')
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+EMAIL_PORT = config('EMAIL_PORT')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS')
+EMAIL_BACKEND = config('EMAIL_BACKEND')
 
 INSTALLED_APPS = [
     'daphne',
@@ -143,7 +148,14 @@ WSGI_APPLICATION = 'auctionBackend.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 
-ENVIRONMENT = os.environ.get('ENVIRONMENT', 'DEVELOPMENT')
+# ENVIRONMENT = os.environ.get('ENVIRONMENT', 'DEVELOPMENT')
+
+ENVIRONMENT = config('ENVIRONMENT', default='DEVELOPMENT')
+
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = ENVIRONMENT == 'DEVELOPMENT'
+
 
 if ENVIRONMENT == 'DEVELOPMENT':
     DATABASES = {
@@ -154,15 +166,22 @@ if ENVIRONMENT == 'DEVELOPMENT':
     }
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': os.getenv('DB_ENGINE'),
-            'HOST': os.getenv('DB_HOST'),
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'PORT': os.getenv('DB_PORT'),
-        }
-    }
+    'default': dj_database_url.parse(config('DB_URL'),
+        # Replace this value with your local database's connection string.
+        # default='postgresql://postgres:postgres@localhost:5432/mysite',
+        conn_max_age=600
+    )
+}
+    # DATABASES = {
+    #     'default': {
+    #         'ENGINE': os.getenv('DB_ENGINE'),
+    #         'HOST': os.getenv('DB_HOST'),
+    #         'NAME': os.getenv('DB_NAME'),
+    #         'USER': os.getenv('DB_USER'),
+    #         'PASSWORD': os.getenv('DB_PASSWORD'),
+    #         'PORT': os.getenv('DB_PORT'),
+    #     }
+    # }
 
 
 
@@ -239,14 +258,14 @@ REST_FRAMEWORK = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))),  # Short-lived access token
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv('REFRESH_TOKEN_EXPIRE_TIME'))),  # Long-lived refresh token (1 month)
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(config('ACCESS_TOKEN_EXPIRE_MINUTES'))),  # Short-lived access token
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(config('REFRESH_TOKEN_EXPIRE_TIME'))),  # Long-lived refresh token (1 month)
     "ROTATE_REFRESH_TOKENS": True,  # New refresh token issued every time it's used
     "BLACKLIST_AFTER_ROTATION": True,  # Old refresh tokens become invalid
     "UPDATE_LAST_LOGIN": False,
 
-    "ALGORITHM": os.getenv('JWT_ALGORITHM', "HS256"),
-    "SIGNING_KEY": os.getenv('JWT_SECRET_KEY'),  # Must be set!
+    "ALGORITHM": config('JWT_ALGORITHM', "HS256"),
+    "SIGNING_KEY": config('JWT_SECRET_KEY'),  # Must be set!
     "VERIFYING_KEY": None,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
