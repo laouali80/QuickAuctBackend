@@ -155,12 +155,12 @@ if ENVIRONMENT == 'DEVELOPMENT':
 else:
     DATABASES = {
         'default': {
-            'ENGINE': os.getenv('ENGINE'),
-            'HOST': os.getenv('HOST'),
-            'NAME': os.getenv('NAME'),
-            'USER': os.getenv('USER'),
-            'PASSWORD': os.getenv('PASSWORD'),
-            'PORT': os.getenv('PORT'),
+            'ENGINE': os.getenv('DB_ENGINE'),
+            'HOST': os.getenv('DB_HOST'),
+            'NAME': os.getenv('DB_NAME'),
+            'USER': os.getenv('DB_USER'),
+            'PASSWORD': os.getenv('DB_PASSWORD'),
+            'PORT': os.getenv('DB_PORT'),
         }
     }
 
