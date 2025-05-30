@@ -40,7 +40,7 @@ SECRET_KEY = config('SECRET_KEY')
 # 'http://localhost:8081/'
 # ]
 
-ALLOWED_HOSTS = ['.vercel.app', 'localhost','10.0.2.2', '10.3.80.26','127.0.0.1']  # Not recommended for production!
+ALLOWED_HOSTS = ['.vercel.app', 'localhost','10.0.2.2', '10.3.80.26','127.0.0.1', 'https://quickauctbackend.onrender.com','quickauctbackend.onrender.com']  # Not recommended for production!
 
 
 
@@ -154,7 +154,8 @@ ENVIRONMENT = config('ENVIRONMENT', default='DEVELOPMENT')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = ENVIRONMENT == 'DEVELOPMENT'
+# DEBUG = ENVIRONMENT == 'DEVELOPMENT'
+DEBUG = True
 
 
 if ENVIRONMENT == 'DEVELOPMENT':
