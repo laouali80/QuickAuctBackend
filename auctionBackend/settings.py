@@ -260,7 +260,7 @@ from datetime import timedelta
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(config('ACCESS_TOKEN_EXPIRE_MINUTES'))),  # Short-lived access token
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(config('REFRESH_TOKEN_EXPIRE_TIME'))),  # Long-lived refresh token (1 month)
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=int(config('REFRESH_TOKEN_EXPIRE_TIME'))),  # Long-lived refresh token (1 month)
     "ROTATE_REFRESH_TOKENS": True,  # New refresh token issued every time it's used
     "BLACKLIST_AFTER_ROTATION": True,  # Old refresh tokens become invalid
     "UPDATE_LAST_LOGIN": False,
