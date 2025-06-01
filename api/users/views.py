@@ -56,11 +56,14 @@ def register_user(request):
                 # }, status=status.HTTP_201_CREATED
             
             return Response({
+                    "status": "success",
                     "user": user_data,
+                    "message": "Successful Registration",
                     "tokens":{
                         "access": str(refresh.access_token),
                         'refresh': str(refresh)
-                    }
+                    },
+                    "statusCode": 201
                 }, status=status.HTTP_201_CREATED)
             
         
@@ -76,8 +79,8 @@ def register_user(request):
         
     else:
         return Response({
-                    "status": "Method not allowed",
-                    "message": "This request method is not allow.",
+                    "status": "warning",
+                    "message": "Bad Request.",
                     "statusCode": 400
                 }, status=status.HTTP_400_BAD_REQUEST)
   
@@ -108,28 +111,29 @@ def login(request):
 
             return Response({
                 "status": "success",
-                "message": "Login successful",
+                "message": "Login Successful",
                 "data": {
                     "tokens":{
                         "access": str(refresh.access_token),
                         'refresh': str(refresh)
                     },
                     "user": user_data
-                }
+                },
+                "statusCode": 200
             }, status=status.HTTP_200_OK)
         else:
             return Response({
-                "status": "Bad request",
-                "message": "Authentication failed",
+                "status": "error",
+                "message": "Invalid credentials",
                 "statusCode": 401
             }, status=status.HTTP_401_UNAUTHORIZED)
 
     else:
         return Response({
-                    "status": "Method not allowed",
-                    "message": "This request method is not allow.",
-                    "statusCode": 405
-                }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+                    "status": "warning",
+                    "message": "Bad Request.",
+                    "statusCode": 400
+                }, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -168,7 +172,8 @@ def send_otp(request):
     first_name = request.data.get('first_name')
 
     if not email:
-        return Response({"message": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Email is required",                
+                         "status": "error",}, status=status.HTTP_400_BAD_REQUEST)
 
     otp = generate_otp()
     minutes = 15
@@ -204,10 +209,12 @@ def send_otp(request):
         email_msg.attach_alternative(html_content, "text/html")
         email_msg.send()
 
-        return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
+        return Response({"message": "OTP sent successfully",                
+                         "status": "succes",}, status=status.HTTP_200_OK)
     # return Response({otp}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({
+            "status": "error",
             "message": "Failed to send OTP",
             "error": str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -222,13 +229,15 @@ def otp_validation(request):
     # print("otp: ",request.session.get('otp_valid_date'))
 
     if not otp:
-        return Response({"message": "OTP is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "OTP is required", 
+                         "status": "error",}, status=status.HTTP_400_BAD_REQUEST)
 
     otp_secret_key = request.session.get('otp_secret_key')
     otp_valid_date = request.session.get('otp_valid_date')
 
     if not otp_secret_key or not otp_valid_date:
-        return Response({"message": "OTP not found or expired"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "OTP not found or expired", 
+                         "status": "warning",}, status=status.HTTP_400_BAD_REQUEST)
 
     valid_until = datetime.fromisoformat(otp_valid_date)
 
@@ -237,17 +246,20 @@ def otp_validation(request):
         del request.session['otp_valid_date']
 
        
-        return Response({"message": "OTP has expired"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "OTP has expired",                
+                         "status": "warning",}, status=status.HTTP_400_BAD_REQUEST)
         
         
     if otp == otp_secret_key:
         del request.session['otp_secret_key']
         del request.session['otp_valid_date']
 
-        return Response({"message": "Valid OTP"}, status=status.HTTP_200_OK)
+        return Response({"message": "Valid OTP",                
+                         "status": "Success",}, status=status.HTTP_200_OK)
     
     else:
-        return Response({"message": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Invalid OTP",                
+                         "status": "warning",}, status=status.HTTP_400_BAD_REQUEST)
     
 # @permission_classes([IsAuthenticated])
 @api_view(['POST'])
