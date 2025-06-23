@@ -19,13 +19,15 @@ from django.utils.html import strip_tags
 from django.shortcuts import render
 from django.core.mail import EmailMultiAlternatives
 from django.shortcuts import redirect
+from rest_framework.exceptions import ValidationError
+
 
 # Create your views here.
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def welcome(request):
-    return Response({'status':'reach'}, status=status.HTTP_201_CREATED)
+    return Response({'status':'success'}, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET','POST'])
@@ -38,7 +40,9 @@ def register_user(request):
         serializer = RegisterUserSerializer(data=request.data)
         # print(serializer.is_valid())
 
-        if serializer.is_valid():
+
+        try:
+            serializer.is_valid(raise_exception=True)
             
             user = serializer.save()
             # print(user)
@@ -57,25 +61,33 @@ def register_user(request):
             
             return Response({
                     "status": "success",
-                    "user": user_data,
                     "message": "Successful Registration",
+                     "data": {
                     "tokens":{
                         "access": str(refresh.access_token),
                         'refresh': str(refresh)
                     },
+                    "user": user_data
+                },
                     "statusCode": 201
                 }, status=status.HTTP_201_CREATED)
-            
-        
-        resp = {
-                "errors": [
-                    {
-                        "field": list(serializer.errors.keys())[0],
-                        "message": serializer.errors[f"{list(serializer.errors.keys())[0]}"][0]
-                    }
-                ]
-            }
-        return Response(resp, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        except ValidationError as e:
+            # Get first error message (flatten if needed)
+            # print(e)
+            detail = e.detail    
+            message = (
+                detail.get("email", ["Something went wrong."])[0]
+                if isinstance(detail.get("email"), list)
+                else str(detail.get("email", "Something went wrong."))
+            )
+            return Response(
+                {"status": "warning", 
+                "message": message,
+                "statusCode": 422
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+        # return Response(resp, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
         
     else:
         return Response({
@@ -111,7 +123,7 @@ def login(request):
 
             return Response({
                 "status": "success",
-                "message": "Login Successful",
+                "message": "Successful",
                 "data": {
                     "tokens":{
                         "access": str(refresh.access_token),
@@ -169,11 +181,13 @@ def send_otp(request):
     """Send a 4-digit OTP to the email of an unregistered user."""
     
     email = request.data.get('email')
-    first_name = request.data.get('first_name')
+
+    # print('yessssss',email)
 
     if not email:
         return Response({"message": "Email is required",                
-                         "status": "error",}, status=status.HTTP_400_BAD_REQUEST)
+                         "status": "error",
+                         "statusCode": 400}, status=status.HTTP_400_BAD_REQUEST)
 
     otp = generate_otp()
     minutes = 15
@@ -181,17 +195,9 @@ def send_otp(request):
 
     request.session['otp_secret_key'] = otp  # Store OTP in session
     request.session['otp_valid_date'] = str(valid_until)
-
-    # print(f'Your OTP is: {otp}')  # Debugging purposes
-
-    # message = f'Hi {first_name}, your OTP is: {otp}'
-
-    # print('email: ',settings.EMAIL_HOST_USER)
-
     
 
     html_content = render_to_string('users/AccountVerification.html', {
-        'first_name': first_name.title(),
         'otp': otp,
         'valid_time':minutes,
         'year': datetime.now().strftime("%Y")
@@ -199,7 +205,6 @@ def send_otp(request):
     text_content = strip_tags(html_content)  # Fallback text version
     try:
        
-
         email_msg = EmailMultiAlternatives(
             subject="QuickAuct Email Verification",
             body=text_content,
@@ -209,12 +214,13 @@ def send_otp(request):
         email_msg.attach_alternative(html_content, "text/html")
         email_msg.send()
 
-        return Response({"message": "OTP sent successfully",                
-                         "status": "succes",}, status=status.HTTP_200_OK)
+        return Response({"message": "OTP Sent",                
+                         "status": "success","statusCode": 200}, status=status.HTTP_200_OK)
     # return Response({otp}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({
             "status": "error",
+            "statusCode": 500,
             "message": "Failed to send OTP",
             "error": str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -224,20 +230,20 @@ def send_otp(request):
 @permission_classes([AllowAny])
 def otp_validation(request):
     """Verify the OTP submitted by the unregistered user."""
-    otp = request.data.get('otp')
 
-    # print("otp: ",request.session.get('otp_valid_date'))
+
+    otp = request.data.get('otp')
 
     if not otp:
         return Response({"message": "OTP is required", 
-                         "status": "error",}, status=status.HTTP_400_BAD_REQUEST)
+                         "status": "error","statusCode": 400}, status=status.HTTP_400_BAD_REQUEST)
 
     otp_secret_key = request.session.get('otp_secret_key')
     otp_valid_date = request.session.get('otp_valid_date')
 
     if not otp_secret_key or not otp_valid_date:
         return Response({"message": "OTP not found or expired", 
-                         "status": "warning",}, status=status.HTTP_400_BAD_REQUEST)
+                         "status": "warning","statusCode": 400}, status=status.HTTP_400_BAD_REQUEST)
 
     valid_until = datetime.fromisoformat(otp_valid_date)
 
@@ -247,7 +253,7 @@ def otp_validation(request):
 
        
         return Response({"message": "OTP has expired",                
-                         "status": "warning",}, status=status.HTTP_400_BAD_REQUEST)
+                         "status": "warning","statusCode": 400}, status=status.HTTP_400_BAD_REQUEST)
         
         
     if otp == otp_secret_key:
@@ -255,11 +261,11 @@ def otp_validation(request):
         del request.session['otp_valid_date']
 
         return Response({"message": "Valid OTP",                
-                         "status": "Success",}, status=status.HTTP_200_OK)
+                         "status": "success","statusCode": 200}, status=status.HTTP_200_OK)
     
     else:
         return Response({"message": "Invalid OTP",                
-                         "status": "warning",}, status=status.HTTP_400_BAD_REQUEST)
+                         "status": "warning","statusCode": 400}, status=status.HTTP_400_BAD_REQUEST)
     
 # @permission_classes([IsAuthenticated])
 @api_view(['POST'])
@@ -290,3 +296,7 @@ def update_location(request):
             "user": user_data
         }
     }, status=status.HTTP_200_OK)
+
+
+
+

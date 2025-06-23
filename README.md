@@ -119,3 +119,12 @@ https://medium.com/@bhairabpatra.iitd/env-file-in-react-js-09d11dc77924
 
 render server
 https://www.youtube.com/watch?v=ZjVzHcXCeMU
+
+{
+"auction_id": 123,
+"reason": "FRAUD",
+"description": "Seller is using fake profile and asking for money outside the app."
+}
+
+aws del
+https://www.youtube.com/watch?v=rgE6aZkSMlY

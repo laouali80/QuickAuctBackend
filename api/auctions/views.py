@@ -9,7 +9,9 @@ from .serializers import (
     AuctionImageSerializer, 
     AuctionSerializer, 
     AuctionTransactionSerializer,
-    CategorySerializer)
+    CategorySerializer,
+    AuctionReportSerializer)
+from rest_framework.exceptions import ValidationError
 
 
 
@@ -144,3 +146,38 @@ def get_categories(request):
     return Response(response_data, status=status.HTTP_200_OK)
     
 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def auction_report(request):
+    auction_id = request.data.get('auction_id')
+    reason = request.data.get('reason')
+    description = request.data.get('description')
+
+    try:
+        auction = Auction.objects.get(pk=auction_id)
+    except Auction.DoesNotExist:
+         return Response({"status": "error", "message": "Auction not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = AuctionReportSerializer(
+        data={'auction': auction.id, 'reason': reason, 'description': description},
+        context={'request': request}
+    )
+
+    try:
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"status": "success", "message": "Auction reported."}, status=status.HTTP_200_OK)
+
+    except ValidationError as e:
+        # Get first error message (flatten if needed)
+        detail = e.detail
+        message = (
+            detail.get("message", ["Something went wrong."])[0]
+            if isinstance(detail.get("message"), list)
+            else str(detail.get("message", "Something went wrong."))
+        )
+        return Response(
+            {"status": "warning", "message": message},
+            status=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )

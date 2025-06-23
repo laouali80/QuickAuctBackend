@@ -19,18 +19,12 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         required=True,
         validators=[UniqueValidator(queryset=User.objects.all(), message="Email already in use.")]
     )
-    username = serializers.CharField(
-        required=True,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="Username already taken.")]
-    )
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email', 'phone_number', 'password', 'aggrement']
+        fields = ['email', 'password', 'aggrement']
         extra_kwargs = {
             'password': {'write_only': True, 'error_messages': {'blank': 'must not be null.'}},
-            'first_name': {'error_messages': {'blank': 'must not be null.'}},
-            'last_name': {'error_messages': {'blank': 'must not be null.'}},
             'aggrement': {'error_messages': {'blank': 'must not be null.'}},
         }
 
@@ -57,3 +51,23 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         
         return user
         
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+
+    username = serializers.CharField(
+        required=True,
+        # validators=[UniqueValidator(queryset=User.objects.all(), message="Username already taken.")]
+        validators=[UniqueValidator(queryset=User.objects.all(), message="Username already taken.")]
+    )
+        
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'username','phone_number']
+        extra_kwargs = {
+            'first_name': {'error_messages': {'blank': 'must not be null.'}},
+            'last_name': {'error_messages': {'blank': 'must not be null.'}},
+            'username': {'error_messages': {'blank': 'must not be null.'}},
+            'phone_number': {'error_messages': {'blank': 'must not be null.'}},
+        }

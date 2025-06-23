@@ -7,7 +7,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.hashers import make_password
-
+from .utils import generate_unique_username
 from .custom import CustomUserManager
 
 
@@ -16,11 +16,11 @@ from .custom import CustomUserManager
 
 class User(AbstractBaseUser, PermissionsMixin):
     userId = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    first_name = models.CharField(max_length=35)
-    last_name = models.CharField(max_length=35)
-    username = models.CharField(max_length=35, unique=True)
+    first_name = models.CharField(max_length=35, null=True)
+    last_name = models.CharField(max_length=35, null=True)
+    username = models.CharField(max_length=35, unique=True, null=True, default=generate_unique_username)
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=15)
+    phone_number = models.CharField(max_length=15, null=True)
     thumbnail = models.ImageField(default="assets/default.png", upload_to=upload_thumbnail, null=True, blank=True)
     aggrement = models.BooleanField(default=False)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -37,7 +37,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ["email", "first_name", "last_name"]  # Fields required when using createsuperuser
 
     def __str__(self):
-        return f"{self.first_name.title()} {self.last_name.title()}"
+        return f"{self.first_name.title()} {self.last_name.title()}" if self.first_name and self.last_name else self.email
 
     def save(self, *args, **kwargs):
         """Ensure password is hashed before saving."""
