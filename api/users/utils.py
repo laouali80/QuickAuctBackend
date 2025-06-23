@@ -5,7 +5,7 @@ import random
 import string
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-
+import uuid
 
 # def upload_thumbnail(instance, filename):
 #     """This function upload an profile image to media/thumbnails file"""
@@ -42,3 +42,6 @@ def generate_otp():
     return ''.join(random.choices(string.digits, k=4))
 
 
+
+def generate_unique_username():
+    return f"user_{uuid.uuid4().hex[:6]}"

@@ -8,7 +8,8 @@ from api.auctions.models import (
     Auction, 
     AuctionImage, 
     Bid, 
-    AuctionTransaction
+    AuctionTransaction,
+    AuctionReport
 )
 from api.users.serializers import UserSerializer
 from .utils import ConvertEndingTime
@@ -254,6 +255,37 @@ class BidCreateSerializer(serializers.ModelSerializer):
             )
         return value
     
+
+
+class AuctionReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuctionReport
+        fields = ['id', 'reporter', 'auction', 'reason', 'description', 'created_at']
+        read_only_fields = ['id', 'reporter', 'created_at']
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        auction = attrs.get('auction')
+
+        if AuctionReport.objects.filter(reporter=user, auction=auction).exists():
+             raise serializers.ValidationError({"message": "You have already reported this auction."})
+
+        return attrs
+    
+    def create(self, validated_data):
+        user = self.context['request'].user
+        auction = validated_data.pop('auction')  # remove to avoid double-pass
+
+        return AuctionReport.objects.create(
+            reporter=user,
+            auction=auction,
+            auction_title=auction.title,
+            auction_seller=auction.seller,
+            auction_uuid=str(auction.id),
+            **validated_data
+        )
+
+
 
 # class AuctionSerializer(serializers.ModelSerializer):
 #     auctId = serializers.CharField(read_only=True)  # Convert UUID to string
