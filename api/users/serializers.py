@@ -11,7 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['userId','first_name', 'last_name', 'username','email', 'phone_number', 'thumbnail', 'latest_location']
+        fields = ['userId','first_name', 'last_name', 'username','email', 'phone_number', 'thumbnail', 'latest_location', 'address']
 
 class RegisterUserSerializer(serializers.ModelSerializer):
 
@@ -53,21 +53,34 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         
 
 
-class UserUpdateSerializer(serializers.ModelSerializer):
-
+class UpdateUserSerializer(serializers.ModelSerializer):
     username = serializers.CharField(
         required=True,
-        # validators=[UniqueValidator(queryset=User.objects.all(), message="Username already taken.")]
-        validators=[UniqueValidator(queryset=User.objects.all(), message="Username already taken.")]
     )
-        
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username','phone_number']
+        fields = ['first_name', 'last_name', 'username', 'phone_number', 'address']
         extra_kwargs = {
-            'first_name': {'error_messages': {'blank': 'must not be null.'}},
-            'last_name': {'error_messages': {'blank': 'must not be null.'}},
-            'username': {'error_messages': {'blank': 'must not be null.'}},
-            'phone_number': {'error_messages': {'blank': 'must not be null.'}},
+            'first_name': {'error_messages': {'message': 'First name must not be null.'}},
+            'last_name': {'error_messages': {'message': 'Last name must not be null.'}},
+            'username': {'error_messages': {'message': 'Username must not be null.'}},
+            'phone_number': {'error_messages': {'message': 'Phone number must not be null.'}},
+            'address': {'error_messages': {'message': 'Address must not be null.'}},
         }
+
+    
+    def validate_username(self, value):
+        """
+        Allow current user to keep their existing username.
+        """
+        user = self.instance  # instance is the user object being updated
+        if User.objects.exclude(pk=user.pk).filter(username=value).exists():
+            raise serializers.ValidationError("Username already taken.")
+        return value
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance

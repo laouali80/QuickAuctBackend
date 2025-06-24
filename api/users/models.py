@@ -16,11 +16,12 @@ from .custom import CustomUserManager
 
 class User(AbstractBaseUser, PermissionsMixin):
     userId = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    first_name = models.CharField(max_length=35, null=True)
-    last_name = models.CharField(max_length=35, null=True)
+    first_name = models.CharField(max_length=35, null=True, blank=True)
+    last_name = models.CharField(max_length=35, null=True, blank=True)
     username = models.CharField(max_length=35, unique=True, null=True, default=generate_unique_username)
+    address = models.TextField(null=True, blank=True)
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=15, null=True)
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
     thumbnail = models.ImageField(default="assets/default.png", upload_to=upload_thumbnail, null=True, blank=True)
     aggrement = models.BooleanField(default=False)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -34,7 +35,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = CustomUserManager()
 
     USERNAME_FIELD = "username"  # Used for authentication
-    REQUIRED_FIELDS = ["email", "first_name", "last_name"]  # Fields required when using createsuperuser
+    # REQUIRED_FIELDS = ["email", "first_name", "last_name"]  # Fields required when using createsuperuser
 
     def __str__(self):
         return f"{self.first_name.title()} {self.last_name.title()}" if self.first_name and self.last_name else self.email
