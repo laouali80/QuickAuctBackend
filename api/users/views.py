@@ -5,7 +5,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from api.users.models import User
-from .serializers import UserSerializer, RegisterUserSerializer
+from .serializers import (UserSerializer, 
+                          RegisterUserSerializer,
+                          UpdateUserSerializer)
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
@@ -269,7 +271,7 @@ def otp_validation(request):
     
 # @permission_classes([IsAuthenticated])
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def update_location(request):
     """Update the latest user Location."""
     location = request.data.get('location')
@@ -298,5 +300,50 @@ def update_location(request):
     }, status=status.HTTP_200_OK)
 
 
+
+# @permission_classes([IsAuthenticated])
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def updateUser(request):
+    """Update user information."""
+    user = request.user  # Get currently authenticated user
+
+    serializer = UpdateUserSerializer(instance=user, data=request.data, partial=True)
+
+    try:
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        
+
+        refresh = RefreshToken.for_user(user)
+        user_data = UserSerializer(user).data
+
+        return Response({
+            "status": "success",
+            "message": "Profile updated",
+            "data": {
+                "tokens": {
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh)
+                },
+                "user": user_data
+            },
+            "statusCode": 200
+        }, status=status.HTTP_200_OK)
+
+    except ValidationError as e:
+        detail = e.detail
+        message = (
+            detail.get("message", ["Validation failed."])[0]
+            if isinstance(detail.get("message"), list)
+            else str(detail.get("message", "Validation failed."))
+        )
+        return Response({
+            "status": "warning",
+            "message": message,
+            "errors": detail,
+            "statusCode": 422
+        }, status=status.HTTP_422_UNPROCESSABLE_ENTITY)  
 
 
