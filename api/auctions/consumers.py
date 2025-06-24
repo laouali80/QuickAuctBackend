@@ -280,21 +280,15 @@ class AuctionConsumer(WebsocketConsumer):
     def _handle_create_auction(self, data):
         user = self.user
         data = data.get('data')
-        image = data.pop('image', [])
+        images = data.pop('image', [])
 
-        # print('reach', data)
+       
+        if not isinstance(images, list):
+            raise ValueError("Image data must be a list")
+        if len(images) > 3:
+            raise ValueError("You can upload a maximum of 3 images")
 
-        # Validate image data first before creating auction
-        if not image.get('uri') or not image.get('fileName'):
-            raise ValueError("Missing required thumbnail data")
-
-        try:
-            base64_data = image.get('uri')
-            if ',' in base64_data:
-                base64_data = base64_data.split(',')[1]
-            image_data = base64.b64decode(base64_data)
-        except (base64.binascii.Error, AttributeError) as e:
-            raise ValueError("Invalid base64 image data") from e
+        
 
         # Wrap everything in a transaction
         try:
@@ -309,16 +303,35 @@ class AuctionConsumer(WebsocketConsumer):
                     raise ValueError(error_msg)
                 
                 new_auction = serializer.save()
+
+
+                # Validate image data first before creating auction
+                for idx, img_data in enumerate(images):
+                    if not img_data.get('uri') or not img_data.get('fileName'):
+                        raise ValueError(f"Image at index {idx} is missing required data")
+
+                    try:
+                        base64_data = img_data.get('uri')
+                        if ',' in base64_data:
+                            base64_data = base64_data.split(',')[1]
+                        image_data = base64.b64decode(base64_data)
+                    except (base64.binascii.Error, AttributeError) as e:
+                        raise ValueError(f"Invalid base64 image data at index {idx}") from e
+                    
+                    # Save auction image
+                    try:
+                        image_file = ContentFile(image_data, name=img_data.get('fileName'))
+                        AuctionImage.objects.create(
+                            auction=new_auction,
+                            image=image_file,
+                            is_primary=(idx == 0)
+                        )
+                        # AuctionImage.save()
+                    except Exception as e:
+                        raise ValueError(f"Failed to save auction image: {str(e)}") from e
                 
-                # Save auction image
-                try:
-                    image_file = ContentFile(image_data, name=image.get('fileName'))
-                    auction_image = AuctionImage(auction=new_auction, image=image_file)
-                    auction_image.save()
-                except Exception as e:
-                    raise ValueError(f"Failed to save auction image: {str(e)}") from e
                 
-                # print('create serializer: ',AuctionSerializer(new_auction,many=False))
+                
 
                 # Serialize the created auction
                 broadcast_data = AuctionSerializer(new_auction,many=False).data
