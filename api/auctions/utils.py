@@ -1,6 +1,6 @@
-import random
-import string
 import secrets
+from datetime import timedelta
+
 from django.utils import timezone
 
 
@@ -10,16 +10,12 @@ def upload_img(instance, filename):
 
     random_hex = secrets.token_hex(8)
 
-
-    extension = filename.split('.')[-1]
-    path = f'auction_images/{random_hex}'
+    extension = filename.split(".")[-1]
+    path = f"auction_images/{random_hex}"
     if extension:
-        path = path + '.' + extension
+        path = path + "." + extension
 
     return path
-
-
-from datetime import datetime, timedelta
 
 
 def ConvertEndingTime(endingTime):
@@ -28,7 +24,7 @@ def ConvertEndingTime(endingTime):
 
     Parameters:
         endingTime (list): Duration list containing time parts.
-            - Format: 
+            - Format:
                 [days, hours, minutes, seconds] (length = 4)
                 [hours, minutes, seconds] (length = 3)
                 [minutes, seconds] (length = 2)
@@ -38,7 +34,9 @@ def ConvertEndingTime(endingTime):
     """
     current_datetime = timezone.now()
 
-    if not isinstance(endingTime, list) or not all(isinstance(x, int) for x in endingTime):
+    if not isinstance(endingTime, list) or not all(
+        isinstance(x, int) for x in endingTime
+    ):
         raise ValueError("endingTime must be a list of integers")
 
     if len(endingTime) == 4:

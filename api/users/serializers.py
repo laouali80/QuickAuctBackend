@@ -1,31 +1,49 @@
 # serializers.py
-from rest_framework import serializers
-from django.db import IntegrityError
 from api.users.models import User
+from django.db import IntegrityError
+from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+
 
 class UserSerializer(serializers.ModelSerializer):
     # userId = serializers.UUIDField(source='userId')
     userId = serializers.CharField(read_only=True)  # Convert UUID to string
 
-
     class Meta:
         model = User
-        fields = ['userId','first_name', 'last_name', 'username','email', 'phone_number', 'thumbnail', 'latest_location', 'address']
+        fields = [
+            "userId",
+            "first_name",
+            "last_name",
+            "username",
+            "email",
+            "phone_number",
+            "thumbnail",
+            "latest_location",
+            "address",
+        ]
+
 
 class RegisterUserSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(
         required=True,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="Email already in use.")]
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(), message="Email already in use."
+            )
+        ],
     )
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'aggrement']
+        fields = ["email", "password", "aggrement"]
         extra_kwargs = {
-            'password': {'write_only': True, 'error_messages': {'blank': 'must not be null.'}},
-            'aggrement': {'error_messages': {'blank': 'must not be null.'}},
+            "password": {
+                "write_only": True,
+                "error_messages": {"blank": "must not be null."},
+            },
+            "aggrement": {"error_messages": {"blank": "must not be null."}},
         }
 
     # this function is called when we want to save the serialize user with the data(validated_data)
@@ -48,9 +66,8 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
         except IntegrityError as e:
             raise serializers.ValidationError(str(e))
-        
+
         return user
-        
 
 
 class UpdateUserSerializer(serializers.ModelSerializer):
@@ -60,16 +77,19 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'phone_number', 'address']
+        fields = ["first_name", "last_name", "username", "phone_number", "address"]
         extra_kwargs = {
-            'first_name': {'error_messages': {'message': 'First name must not be null.'}},
-            'last_name': {'error_messages': {'message': 'Last name must not be null.'}},
-            'username': {'error_messages': {'message': 'Username must not be null.'}},
-            'phone_number': {'error_messages': {'message': 'Phone number must not be null.'}},
-            'address': {'error_messages': {'message': 'Address must not be null.'}},
+            "first_name": {
+                "error_messages": {"message": "First name must not be null."}
+            },
+            "last_name": {"error_messages": {"message": "Last name must not be null."}},
+            "username": {"error_messages": {"message": "Username must not be null."}},
+            "phone_number": {
+                "error_messages": {"message": "Phone number must not be null."}
+            },
+            "address": {"error_messages": {"message": "Address must not be null."}},
         }
 
-    
     def validate_username(self, value):
         """
         Allow current user to keep their existing username.

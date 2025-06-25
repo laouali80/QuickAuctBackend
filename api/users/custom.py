@@ -2,11 +2,9 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.utils.translation import gettext_lazy as _
 
 
-
 class CustomUserManager(BaseUserManager):
-    """"Custom user model where email is the unique identifiers for authentication instead of usernames."""
+    """ "Custom user model where email is the unique identifiers for authentication instead of usernames."""
 
-    
     def create_user(self, username, email, password=None, **extra_fields):
         """Create and return a regular user."""
         if not email:
@@ -19,7 +17,7 @@ class CustomUserManager(BaseUserManager):
             user.set_password(password)
         user.save(using=self._db)
         return user
-    
+
     def create_superuser(self, username, email, password=None, **extra_fields):
         """Create and return a superuser."""
         extra_fields.setdefault("is_staff", True)
