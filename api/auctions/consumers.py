@@ -251,7 +251,7 @@ class AuctionConsumer(WebsocketConsumer):
         has_next = len(results) > page_size
         paginated = results[:page_size]
 
-        serialized = AuctionSerializer(paginated, many=True)
+        serialized = AuctionSerializer(paginated, context={"user": user}, many=True)
         next_page = page + 1 if has_next else None
 
         self._broadcast_to_user(
@@ -319,7 +319,9 @@ class AuctionConsumer(WebsocketConsumer):
                         ) from e
 
                 # Serialize the created auction
-                broadcast_data = AuctionSerializer(new_auction, many=False).data
+                broadcast_data = AuctionSerializer(
+                    new_auction, context={"user": user}, many=False
+                ).data
 
                 # Broadcast to all connected users in the group
                 self._broadcast_group("new_auction", broadcast_data)

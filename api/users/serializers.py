@@ -8,6 +8,7 @@ from rest_framework.validators import UniqueValidator
 class UserSerializer(serializers.ModelSerializer):
     # userId = serializers.UUIDField(source='userId')
     userId = serializers.CharField(read_only=True)  # Convert UUID to string
+    name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -15,6 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
             "userId",
             "first_name",
             "last_name",
+            "name",
             "username",
             "email",
             "phone_number",
@@ -22,6 +24,12 @@ class UserSerializer(serializers.ModelSerializer):
             "latest_location",
             "address",
         ]
+
+    def get_name(self, obj):
+        full_name = (
+            f"{obj.first_name.title() or ''} {obj.last_name.title() or ''}".strip()
+        )
+        return full_name if full_name else obj.username
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):

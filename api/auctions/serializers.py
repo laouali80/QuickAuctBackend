@@ -44,7 +44,8 @@ class BidSerializer(serializers.ModelSerializer):
     bidder = UserSerializer(read_only=True)
     is_highest_bid = serializers.SerializerMethodField()
     auction = serializers.CharField(source="auction_id")
-    # was_outbid = serializers.SerializerMethodField()
+    isCurrentUser = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Bid
@@ -56,14 +57,35 @@ class BidSerializer(serializers.ModelSerializer):
             "placed_at",
             "is_winner",
             "is_highest_bid",
+            "isCurrentUser",
+            "status",
         ]
         read_only_fields = ["placed_at", "is_winner"]
 
     def get_is_highest_bid(self, obj):
         return obj.is_highest_bid
 
-    # def get_was_outbid(self, obj):
-    #     return obj.was_outbid
+    def get_isCurrentUser(self, obj):
+        user = self.context.get("user")
+        if user and user.is_authenticated:
+            return obj.bidder == user
+        return False
+
+    def get_status(self, obj):
+        user = self.context.get("user")
+        if not user or not user.is_authenticated:
+            return None
+
+        is_current_user = obj.bidder == user
+
+        if obj.is_winner and is_current_user:
+            return "winner"
+        if obj.is_highest_bid and is_current_user:
+            return "winning"
+        if is_current_user:
+            return "outbid"
+
+        return None
 
 
 class AuctionSerializer(serializers.ModelSerializer):
@@ -161,6 +183,7 @@ class AuctionSerializer(serializers.ModelSerializer):
 
     def get_user_bid(self, obj):
         user = self.context.get("user")
+
         if user and user.is_authenticated:
             bid = obj.bids.filter(bidder=user).order_by("-amount").first()
             if bid:
