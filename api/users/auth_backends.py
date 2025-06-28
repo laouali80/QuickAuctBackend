@@ -1,6 +1,8 @@
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.hashers import check_password
+
 from .models import User  # Import your Client model
+
 
 class UserAuthBackend(ModelBackend):
     """Custom authentication backend for Client model."""
@@ -12,7 +14,7 @@ class UserAuthBackend(ModelBackend):
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return None  # No client found
-        
+
         # print(check_password(password, user.password))
 
         if check_password(password, user.password):  # Compare hashed password

@@ -1,12 +1,16 @@
 from django.contrib import admin
+
+from .auctions.models import (
+    Auction,
+    AuctionImage,
+    AuctionReport,
+    AuctionTransaction,
+    Bid,
+    Category,
+)
+from .chats.models import Connection, Message
 from .users.models import User
-from .auctions.models import (Auction, 
-                              Category, 
-                              Bid, 
-                              AuctionImage, 
-                              AuctionTransaction,
-                              AuctionReport)
-from .chats.models import Connection,Message
+
 # Register your models here.
 
 

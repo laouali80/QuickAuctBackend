@@ -10,11 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
-from pathlib import Path
 import os
-import dotenv
+from datetime import timedelta
+from pathlib import Path
+
 import dj_database_url
-from decouple import config 
+import dotenv
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,18 +32,25 @@ if os.path.isfile(dotenv_file):
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECRET_KEY = os.getenv('SECRET_KEY')
-SECRET_KEY = config('SECRET_KEY')
+SECRET_KEY = config("SECRET_KEY")
 
 # ALLOWED_HOSTS = []
-# ALLOWED_HOSTS = [ 
+# ALLOWED_HOSTS = [
 #     "http://localhost:3000",
 #     "http://127.0.0.1:3000",
 #     "http://10.0.2.2:3000",  # Android emulator
 # 'http://localhost:8081/'
 # ]
 
-ALLOWED_HOSTS = ['.vercel.app', 'localhost','10.0.2.2', '10.3.80.26','127.0.0.1', 'https://quickauctbackend.onrender.com','quickauctbackend.onrender.com']  # Not recommended for production!
-
+ALLOWED_HOSTS = [
+    ".vercel.app",
+    "localhost",
+    "10.0.2.2",
+    "10.3.80.26",
+    "127.0.0.1",
+    "https://quickauctbackend.onrender.com",
+    "quickauctbackend.onrender.com",
+]  # Not recommended for production!
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -55,7 +64,7 @@ SESSION_COOKIE_SAMESITE = "Lax"  # or "None" if accessing from a different domai
 SESSION_COOKIE_SECURE = False  # must be False for HTTP (local dev)
 
 # Daphne
-ASGI_APPLICATION = 'auctionBackend.asgi.application'
+ASGI_APPLICATION = "auctionBackend.asgi.application"
 
 # Channels config
 CHANNEL_LAYERS = {
@@ -68,10 +77,9 @@ CHANNEL_LAYERS = {
 }
 
 # profile picture media config
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # MEDIA_ROOT = BASE_DIR / "mediafile"
-MEDIA_URL = '/media/'
-
+MEDIA_URL = "/media/"
 
 
 # Email sending config
@@ -83,65 +91,60 @@ MEDIA_URL = '/media/'
 # EMAIL_BACKEND = os.getenv('EMAIL_BACKEND')
 
 
-EMAIL_HOST = config('EMAIL_HOST')
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-EMAIL_PORT = config('EMAIL_PORT')
-EMAIL_USE_TLS = config('EMAIL_USE_TLS')
-EMAIL_BACKEND = config('EMAIL_BACKEND')
+EMAIL_HOST = config("EMAIL_HOST")
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+EMAIL_PORT = config("EMAIL_PORT")
+EMAIL_USE_TLS = config("EMAIL_USE_TLS")
+EMAIL_BACKEND = config("EMAIL_BACKEND")
 
 INSTALLED_APPS = [
-    'daphne',
-    'api',
-    
-    'rest_framework',
-    
-    'corsheaders',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    
-    'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',
+    "daphne",
+    "api",
+    "rest_framework",
+    "corsheaders",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 
-ROOT_URLCONF = 'auctionBackend.urls'
+ROOT_URLCONF = "auctionBackend.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'auctionBackend.wsgi.application'
+WSGI_APPLICATION = "auctionBackend.wsgi.application"
 
 
 # Database
@@ -150,7 +153,7 @@ WSGI_APPLICATION = 'auctionBackend.wsgi.application'
 
 # ENVIRONMENT = os.environ.get('ENVIRONMENT', 'DEVELOPMENT')
 
-ENVIRONMENT = config('ENVIRONMENT', default='DEVELOPMENT')
+ENVIRONMENT = config("ENVIRONMENT", default="DEVELOPMENT")
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -158,21 +161,22 @@ ENVIRONMENT = config('ENVIRONMENT', default='DEVELOPMENT')
 DEBUG = True
 
 
-if ENVIRONMENT == 'DEVELOPMENT':
+if ENVIRONMENT == "DEVELOPMENT":
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
 else:
     DATABASES = {
-    'default': dj_database_url.parse(config('DB_URL'),
-        # Replace this value with your local database's connection string.
-        # default='postgresql://postgres:postgres@localhost:5432/mysite',
-        conn_max_age=600
-    )
-}
+        "default": dj_database_url.parse(
+            config("DB_URL"),
+            # Replace this value with your local database's connection string.
+            # default='postgresql://postgres:postgres@localhost:5432/mysite',
+            conn_max_age=600,
+        )
+    }
     # DATABASES = {
     #     'default': {
     #         'ENGINE': os.getenv('DB_ENGINE'),
@@ -185,24 +189,21 @@ else:
     # }
 
 
-
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -210,10 +211,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
 
-TIME_ZONE = 'Africa/Lagos'
+TIME_ZONE = "Africa/Lagos"
 
 
 USE_I18N = True
@@ -224,7 +225,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 # STATIC_ROOT = BASE_DIR / 'staticfiles'
 # STATICFILES_DIRS = [
 #     os.path.join(BASE_DIR, 'static')
@@ -236,44 +237,42 @@ STATIC_URL = 'static/'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTHENTICATION_BACKENDS = [
-    'api.users.auth_backends.UserAuthBackend',  # Custom authentication backend
-    'django.contrib.auth.backends.ModelBackend',  # Default backend
+    "api.users.auth_backends.UserAuthBackend",  # Custom authentication backend
+    "django.contrib.auth.backends.ModelBackend",  # Default backend
 ]
 
 
 AUTH_USER_MODEL = "api.User"
 
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
 }
 
 
-from datetime import timedelta
-
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(config('ACCESS_TOKEN_EXPIRE_MINUTES'))),  # Short-lived access token
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(config('REFRESH_TOKEN_EXPIRE_TIME'))),  # Long-lived refresh token (1 month)
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(config("ACCESS_TOKEN_EXPIRE_MINUTES"))
+    ),  # Short-lived access token
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(config("REFRESH_TOKEN_EXPIRE_TIME"))
+    ),  # Long-lived refresh token (1 month)
     "ROTATE_REFRESH_TOKENS": True,  # New refresh token issued every time it's used
     "BLACKLIST_AFTER_ROTATION": True,  # Old refresh tokens become invalid
     "UPDATE_LAST_LOGIN": False,
-
-    "ALGORITHM": config('JWT_ALGORITHM', "HS256"),
-    "SIGNING_KEY": config('JWT_SECRET_KEY'),  # Must be set!
+    "ALGORITHM": config("JWT_ALGORITHM", "HS256"),
+    "SIGNING_KEY": config("JWT_SECRET_KEY"),  # Must be set!
     "VERIFYING_KEY": None,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "USER_ID_FIELD": "userId",
     "USER_ID_CLAIM": "user_id",
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-
     "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
     "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
 }

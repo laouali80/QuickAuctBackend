@@ -1,15 +1,16 @@
-import secrets
 import os
-from PIL import Image
 import random
+import secrets
 import string
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 import uuid
+
+# from django.core.files.base import ContentFile
+# from django.core.files.storage import default_storage
+# from PIL import Image
 
 # def upload_thumbnail(instance, filename):
 #     """This function upload an profile image to media/thumbnails file"""
-    
+
 #     path = f'thumbnails/{instance.username}'
 #     extension = filename.split('.')[-1]
 
@@ -17,6 +18,7 @@ import uuid
 #         path = path + '.' + extension
 
 #     return path
+
 
 def upload_thumbnail(instance, filename):
     """
@@ -30,7 +32,7 @@ def upload_thumbnail(instance, filename):
     _, extension = os.path.splitext(filename)
 
     # Sanitize extension (remove dot, default to .jpg if missing)
-    ext = extension.lower().lstrip('.') or 'jpg'
+    ext = extension.lower().lstrip(".") or "jpg"
 
     # Construct the secure path
     new_filename = f"{random_hex}.{ext}"
@@ -39,8 +41,7 @@ def upload_thumbnail(instance, filename):
 
 def generate_otp():
     """Generate a 4-digit OTP."""
-    return ''.join(random.choices(string.digits, k=4))
-
+    return "".join(random.choices(string.digits, k=4))
 
 
 def generate_unique_username():
