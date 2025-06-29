@@ -130,3 +130,5 @@ aws del
 https://www.youtube.com/watch?v=rgE6aZkSMlY
 
 added ruff, black and autopep8 python extension
+
+https://www.youtube.com/watch?v=GtheHlioTrA&list=PL5E1F5cTSTtRHN1WynTlFmr9ozlfZEUNI&index=3

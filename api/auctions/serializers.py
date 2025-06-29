@@ -72,20 +72,17 @@ class BidSerializer(serializers.ModelSerializer):
         return False
 
     def get_status(self, obj):
-        user = self.context.get("user")
-        if not user or not user.is_authenticated:
-            return None
+        auction = (
+            obj.auction
+        )  # This is available because it's nested via AuctionSerializer
 
-        is_current_user = obj.bidder == user
+        has_ended = getattr(auction, "has_ended", False)
+        is_highest = obj.is_highest_bid
 
-        if obj.is_winner and is_current_user:
-            return "winner"
-        if obj.is_highest_bid and is_current_user:
-            return "winning"
-        if is_current_user:
-            return "outbid"
-
-        return None
+        if has_ended:
+            return "winner" if is_highest else "outbided"
+        else:
+            return "winning" if is_highest else "outbid"
 
 
 class AuctionSerializer(serializers.ModelSerializer):
