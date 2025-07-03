@@ -327,5 +327,26 @@ STORAGES = {
 }
 
 
-print(default_storage.__class__)
+print("Default Storage: ", default_storage.__class__)
 MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
+
+
+# STORAGES = {
+#     "default": {
+#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+#         "OPTIONS": {
+#             "access_key": config("AWS_ACCESS_KEY_ID"),
+#             "secret_key": config("AWS_SECRET_ACCESS_KEY"),
+#             "bucket_name": config("AWS_STORAGE_BUCKET_NAME"),
+#             "region_name": config("AWS_S3_REGION_NAME"),
+#             "custom_domain": f"{config('AWS_STORAGE_BUCKET_NAME')}.s3.{config('AWS_S3_REGION_NAME')}.amazonaws.com",
+#             "file_overwrite": False,
+#             "default_acl": None,
+#         },
+#     },
+#     # Optional: separate static files storage
+#     # "staticfiles": {
+#     #     "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+#     #     "OPTIONS": {...},
+#     # },
+# }
