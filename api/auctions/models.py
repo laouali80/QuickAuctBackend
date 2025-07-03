@@ -6,7 +6,7 @@ from django.db import models
 from django.db.models import OuterRef, Subquery
 from django.utils import timezone
 
-from .utils import upload_img
+from .utils import upload_img, upload_local, upload_to_s3
 
 # Create your models here.
 
@@ -164,7 +164,7 @@ class AuctionImage(models.Model):
     auction = models.ForeignKey(
         Auction, on_delete=models.CASCADE, related_name="images"
     )
-    image = models.ImageField(default="assets/defaultAuct.jpg", upload_to=upload_img)
+    image = models.ImageField(default="assets/defaultAuct.jpg", upload_to=upload_local)
     is_primary = models.BooleanField(default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 

@@ -402,7 +402,30 @@ class AuctionConsumer(WebsocketConsumer):
         self._broadcast_to_user("watcher", broadcast_data)
 
     def _handle_delete_auction(self, data):
-        pass
+        """Delete an auction and its images from S3"""
+        auction_id = data.get("auction_id")
+        user = self.user
+        if not auction_id:
+            self._send_error("No auction_id provided")
+            return
+        try:
+            auction = Auction.objects.get(pk=auction_id)
+        except Auction.DoesNotExist:
+            self._send_error(f"Auction {auction_id} not found")
+            return
+        if auction.seller != user:
+            self._send_error("Only the seller can delete the auction")
+            return
+        # Delete all images from S3 for this auction
+        for img in auction.images.all():
+            if img.image:
+                img.image.delete(save=False)  # This deletes from S3
+            img.delete()
+        auction.delete()
+        self._broadcast_to_user(
+            "delete_auction",
+            {"message": f"Auction {auction_id} and its images deleted successfully"}
+        )
 
     def _handle_fetch_likes_auctions(self, data):
 

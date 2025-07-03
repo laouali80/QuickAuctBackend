@@ -25,7 +25,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     thumbnail = models.ImageField(
-        default="assets/default.png", upload_to=upload_thumbnail, null=True, blank=True
+        default="https://quicauct-mediafiles.s3.us-east-1.amazonaws.com/static/assets/default.png",
+        upload_to=upload_thumbnail,
+        null=True,
+        blank=True,
     )
     aggrement = models.BooleanField(default=False)
     createdAt = models.DateTimeField(auto_now_add=True)

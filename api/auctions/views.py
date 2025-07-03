@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Auction, Category
+from .models import Auction, Category, AuctionImage
 from .serializers import (
     AuctionCreateSerializer,
     AuctionReportSerializer,
@@ -99,6 +99,15 @@ def place_bid(request, auctId):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+def _handle_delete_auction(auction):
+    # Delete all images from S3 for this auction
+    for img in auction.images.all():
+        if img.image:
+            img.image.delete(save=False)  # This deletes from S3
+        img.delete()
+    auction.delete()
+
+
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_auction(request, auctId):
@@ -111,9 +120,9 @@ def delete_auction(request, auctId):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    auction.delete()
+    _handle_delete_auction(auction)
     return Response(
-        {"message": "Auction deleted successfully"}, status=status.HTTP_204_NO_CONTENT
+        {"message": "Auction and its images deleted successfully"}, status=status.HTTP_204_NO_CONTENT
     )
 
 
