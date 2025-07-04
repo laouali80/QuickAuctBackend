@@ -132,3 +132,8 @@ https://www.youtube.com/watch?v=rgE6aZkSMlY
 added ruff, black and autopep8 python extension
 
 https://www.youtube.com/watch?v=GtheHlioTrA&list=PL5E1F5cTSTtRHN1WynTlFmr9ozlfZEUNI&index=3
+
+aws s3
+https://www.youtube.com/watch?v=-DU6Y-x-2MA
+
+https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#settings

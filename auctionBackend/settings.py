@@ -17,6 +17,10 @@ from pathlib import Path
 import dj_database_url
 import dotenv
 from decouple import config
+from django.core.files.storage import default_storage
+
+ENVIRONMENT = config("ENVIRONMENT", default="DEVELOPMENT")
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -77,9 +81,20 @@ CHANNEL_LAYERS = {
 }
 
 # profile picture media config
+
+
+# ✅ Place this last
+# if ENVIRONMENT == "DEVELOPMENT":
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-# MEDIA_ROOT = BASE_DIR / "mediafile"
+MEDIA_ROOT = BASE_DIR / "mediafiles"
 MEDIA_URL = "/media/"
+
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_URL = "/static/"
+# else:
+
+# print("DEFAULT_FILE_STORAGE =", DEFAULT_FILE_STORAGE, file=sys.stderr)
 
 
 # Email sending config
@@ -111,6 +126,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "storages",
 ]
 
 MIDDLEWARE = [
@@ -123,6 +139,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 
@@ -153,15 +170,14 @@ WSGI_APPLICATION = "auctionBackend.wsgi.application"
 
 # ENVIRONMENT = os.environ.get('ENVIRONMENT', 'DEVELOPMENT')
 
-ENVIRONMENT = config("ENVIRONMENT", default="DEVELOPMENT")
-
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = ENVIRONMENT == 'DEVELOPMENT'
+
 DEBUG = True
 
 
 if ENVIRONMENT == "DEVELOPMENT":
+    # DEBUG = True
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -169,6 +185,7 @@ if ENVIRONMENT == "DEVELOPMENT":
         }
     }
 else:
+    # DEBUG = False
     DATABASES = {
         "default": dj_database_url.parse(
             config("DB_URL"),
@@ -276,3 +293,60 @@ SIMPLE_JWT = {
     "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
     "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
 }
+
+
+# AWS and storage configuration
+AWS_LOCATION = "media"
+
+
+AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
+# print("AWS_ACCESS_KEY_ID =", AWS_ACCESS_KEY_ID, file=sys.stderr)
+AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
+# print("AWS_SECRET_ACCESS_KEY =", AWS_SECRET_ACCESS_KEY, file=sys.stderr)
+AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+# print("AWS_STORAGE_BUCKET_NAME =", AWS_STORAGE_BUCKET_NAME, file=sys.stderr)
+AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
+# print("AWS_S3_REGION_NAME =", AWS_S3_REGION_NAME, file=sys.stderr)
+AWS_S3_CUSTOM_DOMAIN = (
+    f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
+)
+# print("AWS_S3_CUSTOM_DOMAIN =", AWS_S3_CUSTOM_DOMAIN, file=sys.stderr)
+AWS_S3_FILE_OVERWRITE = False
+# print("AWS_S3_FILE_OVERWRITE =", AWS_S3_FILE_OVERWRITE, file=sys.stderr)
+AWS_DEFAULT_ACL = None
+# print("AWS_DEFAULT_ACL =", AWS_DEFAULT_ACL, file=sys.stderr)
+# DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+
+print("Default Storage: ", default_storage.__class__)
+MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
+
+
+# STORAGES = {
+#     "default": {
+#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+#         "OPTIONS": {
+#             "access_key": config("AWS_ACCESS_KEY_ID"),
+#             "secret_key": config("AWS_SECRET_ACCESS_KEY"),
+#             "bucket_name": config("AWS_STORAGE_BUCKET_NAME"),
+#             "region_name": config("AWS_S3_REGION_NAME"),
+#             "custom_domain": f"{config('AWS_STORAGE_BUCKET_NAME')}.s3.{config('AWS_S3_REGION_NAME')}.amazonaws.com",
+#             "file_overwrite": False,
+#             "default_acl": None,
+#         },
+#     },
+#     # Optional: separate static files storage
+#     # "staticfiles": {
+#     #     "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+#     #     "OPTIONS": {...},
+#     # },
+# }
