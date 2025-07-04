@@ -22,6 +22,8 @@ from .serializers import ChatSerializer, MessageSerializer
 
 logger = logging.getLogger(__name__)
 
+MODE = settings.ENVIRONMENT
+
 
 class ChatConsumer(WebsocketConsumer):
     """WebSocket consumer for handling real-time chat communication."""
@@ -33,6 +35,7 @@ class ChatConsumer(WebsocketConsumer):
 
     def connect(self):
         """Authenticate and establish WebSocket connection."""
+        print(settings.ENVIRONMENT == "DEVELOPMENT")
         try:
             token = self._extract_token()
             if not token:
@@ -148,18 +151,15 @@ class ChatConsumer(WebsocketConsumer):
         return handlers.get(message_type)
 
     def _handle_thumbnail_update(self, data):
-        """Process thumbnail update requests."""
+        """Update user thumbnail."""
 
         user = self.user
 
-        if not data.get("base64") or not data.get("filename"):
+        base64_data = data.get("base64")
+        filename = data.get("filename")
+
+        if not base64_data or not filename:
             raise ValueError("Missing required thumbnail data")
-
-        # image_file = ContentFile(image_data, name=data['filename'])
-        # Update user thumbnail
-        # self.user.thumbnail.save(data['filename'], image_file, save=True)
-
-        base64_data = data["base64"]
 
         # Remove metadata header if present
         if "," in base64_data:
@@ -168,40 +168,46 @@ class ChatConsumer(WebsocketConsumer):
         try:
             image_data = base64.b64decode(base64_data)
         except base64.binascii.Error as e:
-            raise ValueError("Invalid base64 data") from e
+            raise ValueError("Invalid base64 base64_data") from e
 
+        # Load and resize the image using Pillow
         try:
             image = Image.open(BytesIO(image_data))
-            image.thumbnail((125, 125))  # Resize to thumbnail
+            image.thumbnail((125, 125))
         except UnidentifiedImageError:
             raise ValueError("Cannot identify image file")
 
-        # Save image to memory
+        # Prepare file to be saved
         output_io = BytesIO()
-        image_format = image.format or "JPEG"  # Fallback in case format is None
+        image_format = image.format or "JPEG"
         image.save(output_io, format=image_format)
         output_io.seek(0)
 
-        # Create a ContentFile from the resized image
-        resized_image_file = ContentFile(output_io.read(), name=data["filename"])
+        resized_image_file = ContentFile(output_io.read(), name=filename)
 
-        # Check if current thumbnail is not the default
+        # Delete previous thumbnail if it's not the default
         current_thumbnail = user.thumbnail.name
 
-        # Delete current thumbnail only if it's a custom uploaded one
-        if current_thumbnail and current_thumbnail.startswith("thumbnails/"):
+        if current_thumbnail:
+            if MODE == "DEVELOPMENT":
+                if current_thumbnail.startswith("thumbnails/"):
+                    full_path = os.path.join(settings.MEDIA_ROOT, current_thumbnail)
+                    if os.path.isfile(full_path):
+                        os.remove(full_path)
+                    user.thumbnail.delete(save=False)
 
-            full_path = os.path.join(settings.MEDIA_ROOT, current_thumbnail)
-            if os.path.isfile(full_path):
-                os.remove(full_path)
-            user.thumbnail.delete(save=False)
+            else:  # In production, using S3
+                default_url = "https://quicauct-mediafiles.s3.us-east-1.amazonaws.com/static/assets/default.png"
+                current_url = user.thumbnail.url if user.thumbnail else ""
 
-        # Save the resized image
-        user.thumbnail.save(data["filename"], resized_image_file, save=True)
+                if current_url and current_url != default_url:
+                    user.thumbnail.delete(save=False)
+
+        # Save new image
+        user.thumbnail.save(filename, resized_image_file, save=True)
 
         # Broadcast update
         serialized = UserSerializer(user)
-
         self._broadcast_to_user("thumbnail", serialized.data)
 
     def _handle_fetch_chats_list(self, data):

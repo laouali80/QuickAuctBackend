@@ -6,6 +6,7 @@ import os
 import jwt
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.base import ContentFile
@@ -19,6 +20,8 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+MODE = settings.ENVIRONMENT
 
 
 class AuctionConsumer(WebsocketConsumer):
@@ -215,7 +218,7 @@ class AuctionConsumer(WebsocketConsumer):
         # print("reach ", category)
         # Category filter
         if category and category.get("value") != "All":
-            print("reach ")
+            # print("reach ")
 
             base_qs = base_qs.filter(category__id=category["key"])
 
@@ -402,29 +405,43 @@ class AuctionConsumer(WebsocketConsumer):
         self._broadcast_to_user("watcher", broadcast_data)
 
     def _handle_delete_auction(self, data):
-        """Delete an auction and its images from S3"""
+        """Delete an auction and its uploaded images from local or S3."""
+
+        data = data.get("data")
         auction_id = data.get("auction_id")
         user = self.user
+
         if not auction_id:
             self._send_error("No auction_id provided")
             return
+
         try:
             auction = Auction.objects.get(pk=auction_id)
         except Auction.DoesNotExist:
             self._send_error(f"Auction {auction_id} not found")
             return
+
         if auction.seller != user:
             self._send_error("Only the seller can delete the auction")
             return
-        # Delete all images from S3 for this auction
+
+        # Delete all images (they are guaranteed to be user-uploaded)
         for img in auction.images.all():
             if img.image:
-                img.image.delete(save=False)  # This deletes from S3
+                if MODE == "DEVELOPMENT":
+                    file_path = os.path.join(settings.MEDIA_ROOT, img.image.name)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                else:
+                    img.image.delete(save=False)  # Deletes from S3
+
             img.delete()
+
         auction.delete()
+
         self._broadcast_to_user(
             "delete_auction",
-            {"message": f"Auction {auction_id} and its images deleted successfully"}
+            {"message": f"Auction {auction_id} and its images deleted successfully"},
         )
 
     def _handle_fetch_likes_auctions(self, data):
