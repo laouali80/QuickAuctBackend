@@ -17,6 +17,7 @@ from .models import Auction, AuctionImage, Bid
 from .serializers import (
     AuctionCreateSerializer,
     AuctionSerializer,
+    AuctionUpdateSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ class AuctionConsumer(WebsocketConsumer):
         super().__init__(*args, **kwargs)
         self.user = None
         self.username = None
+        self.AUCTION_LIMIT = 10
 
     def connect(self):
         """Authenticate and establish WebSocket connection."""
@@ -271,6 +273,11 @@ class AuctionConsumer(WebsocketConsumer):
         data = data.get("data")
         images = data.pop("image", [])
 
+        count = Auction.objects.filter(seller=user).count()
+        print("count: ", count)
+        if count >= self.AUCTION_LIMIT:
+            return ValueError("Auction limit reached")
+
         if not isinstance(images, list):
             raise ValueError("Image data must be a list")
         if len(images) > 3:
@@ -329,7 +336,7 @@ class AuctionConsumer(WebsocketConsumer):
                 # Broadcast to all connected users in the group
                 self._broadcast_group("new_auction", broadcast_data)
 
-                return new_auction
+                # return new_auction
 
         except Exception as e:
             # Log the full error here if needed
@@ -350,10 +357,13 @@ class AuctionConsumer(WebsocketConsumer):
             self._send_error(f"Auction {auction_id} not found")
             return  # stop further execution
 
+        # print("user: ", user)
+        # print("auction_id: ", auction.seller)
+
         # Check if user has already an existing bid
         new_amount = current_price + auction.bid_increment
 
-        # print(new_amount)
+        # # print(new_amount)
 
         with transaction.atomic():
             try:
@@ -425,23 +435,36 @@ class AuctionConsumer(WebsocketConsumer):
             self._send_error("Only the seller can delete the auction")
             return
 
+        # print("reach delete auction: ", auction_id)
+
         # Delete all images (they are guaranteed to be user-uploaded)
         for img in auction.images.all():
             if img.image:
                 if MODE == "DEVELOPMENT":
+                    # print("reach delete image Dev: ", img.image.name)
+                    # If in development, delete from local storage
                     file_path = os.path.join(settings.MEDIA_ROOT, img.image.name)
                     if os.path.isfile(file_path):
                         os.remove(file_path)
                 else:
+                    # print("reach delete image Prod: ", img.image.name)
+                    # If in production, delete from S3
                     img.image.delete(save=False)  # Deletes from S3
 
             img.delete()
 
         auction.delete()
+        # print("auction deleted successful: ", auction_id)
 
         self._broadcast_to_user(
             "delete_auction",
-            {"message": f"Auction {auction_id} and its images deleted successfully"},
+            {
+                "message": "Auction deleted successfully",
+                "status": "success",
+                "auction_id": auction_id,
+                "sellerId": f"{user.userId}",
+                # "sellerId": user.userId,
+            },
         )
 
     def _handle_fetch_likes_auctions(self, data):
@@ -552,13 +575,156 @@ class AuctionConsumer(WebsocketConsumer):
         )
 
     def _handle_edit_auction(self, data):
-        pass
+        """Handle auction editing requests."""
+        user = self.user
+        data = data.get("data", {})
+        auction_id = data.get("auction_id")
+
+        if not auction_id:
+            self._send_error("No auction_id provided")
+            return
+
+        try:
+            auction = Auction.objects.get(pk=auction_id)
+        except Auction.DoesNotExist:
+            self._send_error(f"Auction {auction_id} not found")
+            return
+
+        # Check if user is the seller
+        if auction.seller != user:
+            self._send_error("Only the seller can edit the auction")
+            return
+
+        # Remove auction_id from data before serialization
+        edit_data = {k: v for k, v in data.items() if k != "auction_id"}
+
+        try:
+            serializer = AuctionUpdateSerializer(
+                auction, data=edit_data, context={"user": user}, partial=True
+            )
+
+            if not serializer.is_valid():
+                error_msg = "Auction validation failed: " + str(serializer.errors)
+                self._send_error(error_msg)
+                return
+
+            updated_auction = serializer.save()
+
+            # Serialize and broadcast the updated auction
+            broadcast_data = AuctionSerializer(
+                updated_auction, context={"user": user}
+            ).data
+
+            self._broadcast_group("auction_updated", broadcast_data)
+            self._broadcast_to_user(
+                "edit_auction_success",
+                {"message": "Auction updated successfully", "auction": broadcast_data},
+            )
+
+        except Exception as e:
+            logger.error(f"Error editing auction: {str(e)}")
+            self._send_error(f"Failed to edit auction: {str(e)}")
 
     def _handle_close_auction(self, data):
-        pass
+        """Handle auction closing/cancellation requests."""
+        user = self.user
+        data = data.get("data", {})
+        auction_id = data.get("auction_id")
+
+        if not auction_id:
+            self._send_error("No auction_id provided")
+            return
+
+        try:
+            auction = Auction.objects.get(pk=auction_id)
+        except Auction.DoesNotExist:
+            self._send_error(f"Auction {auction_id} not found")
+            return
+
+        # Check if user is the seller
+        if auction.seller != user:
+            self._send_error("Only the seller can close the auction")
+            return
+
+        # Check if auction can be closed
+        if auction.status == Auction.Status.CANCELLED:
+            self._send_error("Auction is already cancelled")
+            return
+
+        if auction.status == Auction.Status.ENDED:
+            self._send_error("Auction has already ended")
+            return
+
+        if auction.status == Auction.Status.COMPLETED:
+            self._send_error("Auction is already completed")
+            return
+
+        try:
+            # Close the auction
+            auction.status = Auction.Status.CANCELLED
+            auction.save()
+
+            # Serialize and broadcast the updated auction
+            broadcast_data = AuctionSerializer(auction, context={"user": user}).data
+
+            self._broadcast_group("auction_closed", broadcast_data)
+            self._broadcast_to_user(
+                "close_auction_success",
+                {"message": "Auction closed successfully", "auction": broadcast_data},
+            )
+
+        except Exception as e:
+            logger.error(f"Error closing auction: {str(e)}")
+            self._send_error(f"Failed to close auction: {str(e)}")
 
     def _handle_reopen_auction(self, data):
-        pass
+        """Handle auction reopening requests."""
+        user = self.user
+        data = data.get("data", {})
+        auction_id = data.get("auction_id")
+
+        if not auction_id:
+            self._send_error("No auction_id provided")
+            return
+
+        try:
+            auction = Auction.objects.get(pk=auction_id)
+        except Auction.DoesNotExist:
+            self._send_error(f"Auction {auction_id} not found")
+            return
+
+        # Check if user is the seller
+        if auction.seller != user:
+            self._send_error("Only the seller can reopen the auction")
+            return
+
+        # Check if auction can be reopened
+        if auction.status != Auction.Status.CANCELLED:
+            self._send_error("Only cancelled auctions can be reopened")
+            return
+
+        # Check if auction has ended naturally
+        if auction.has_ended:
+            self._send_error("Cannot reopen auction that has ended")
+            return
+
+        try:
+            # Reopen the auction
+            auction.status = Auction.Status.ONGOING
+            auction.save()
+
+            # Serialize and broadcast the updated auction
+            broadcast_data = AuctionSerializer(auction, context={"user": user}).data
+
+            self._broadcast_group("auction_reopened", broadcast_data)
+            self._broadcast_to_user(
+                "reopen_auction_success",
+                {"message": "Auction reopened successfully", "auction": broadcast_data},
+            )
+
+        except Exception as e:
+            logger.error(f"Error reopening auction: {str(e)}")
+            self._send_error(f"Failed to reopen auction: {str(e)}")
 
     def _handle_report_user(self, data):
         pass
@@ -600,6 +766,20 @@ class AuctionConsumer(WebsocketConsumer):
         except Exception as e:
             logger.error(f"Error broadcasting message: {str(e)}")
             print(f"Error broadcasting message: {str(e)}")
+
+            async_to_sync(self.channel_layer.group_send)(
+                self.username,
+                {
+                    "type": "broadcast.message",
+                    "source": "proccessing_error",
+                    "data": {
+                        "status": "error",
+                        "message": "Something went wrong",
+                        "detail": str(e),  # optional: useful for debugging
+                        "source": source,
+                    },
+                },
+            )
 
     def _broadcast_group(self, source, data):
         """Handler for group broadcast messages."""

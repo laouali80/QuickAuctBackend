@@ -9,6 +9,7 @@ from api.auctions.models import (
 )
 from api.users.serializers import UserSerializer
 from django.db import IntegrityError
+from django.utils import timezone
 from rest_framework import serializers
 
 from .utils import ConvertEndingTime
@@ -68,6 +69,8 @@ class BidSerializer(serializers.ModelSerializer):
     def get_isCurrentUser(self, obj):
         user = self.context.get("user")
         if user and user.is_authenticated:
+            print("obj.bidder: ", obj.bidder)
+            print("user: ", user)
             return obj.bidder == user
         return False
 
@@ -253,6 +256,65 @@ class AuctionCreateSerializer(serializers.ModelSerializer):
         except IntegrityError as e:
             raise serializers.ValidationError(str(e))
         return auction
+
+
+class AuctionUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating auction details."""
+
+    end_time = serializers.ListField(
+        child=serializers.IntegerField(min_value=0), write_only=True, required=False
+    )
+
+    class Meta:
+        model = Auction
+        fields = [
+            "title",
+            "description",
+            "starting_price",
+            "bid_increment",
+            "category",
+            "end_time",
+            "shipping_details",
+            "payment_methods",
+            "item_condition",
+        ]
+
+    def validate_end_time(self, value):
+        if not isinstance(value, list) or len(value) not in [2, 3, 4]:
+            raise serializers.ValidationError("Invalid end_time format")
+        return ConvertEndingTime(value)
+
+    def validate(self, attrs):
+        """Validate that auction can be edited."""
+        auction = self.instance
+
+        # Check if auction has bids
+        if auction.bids.exists():
+            raise serializers.ValidationError(
+                "Cannot edit auction that has received bids"
+            )
+
+        # Check if auction has ended
+        if auction.has_ended:
+            raise serializers.ValidationError("Cannot edit auction that has ended")
+
+        # Check if auction is cancelled
+        if auction.status == Auction.Status.CANCELLED:
+            raise serializers.ValidationError("Cannot edit cancelled auction")
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        """Update auction instance."""
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        # Update current_price if starting_price changed
+        if "starting_price" in validated_data:
+            instance.current_price = validated_data["starting_price"]
+
+        instance.save()
+        return instance
 
 
 class BidCreateSerializer(serializers.ModelSerializer):
