@@ -295,64 +295,43 @@ SIMPLE_JWT = {
 }
 
 
-# AWS and storage configuration
-AWS_LOCATION = "media"
+if ENVIRONMENT == "PRODUCTION":
+    # AWS and storage configuration
+    AWS_LOCATION = "media"
 
+    AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
+    AWS_S3_CUSTOM_DOMAIN = (
+        f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
+    )
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None
 
-AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
-# print("AWS_ACCESS_KEY_ID =", AWS_ACCESS_KEY_ID, file=sys.stderr)
-AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
-# print("AWS_SECRET_ACCESS_KEY =", AWS_SECRET_ACCESS_KEY, file=sys.stderr)
-AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
-# print("AWS_STORAGE_BUCKET_NAME =", AWS_STORAGE_BUCKET_NAME, file=sys.stderr)
-AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
-# print("AWS_S3_REGION_NAME =", AWS_S3_REGION_NAME, file=sys.stderr)
-AWS_S3_CUSTOM_DOMAIN = (
-    f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
-)
-# print("AWS_S3_CUSTOM_DOMAIN =", AWS_S3_CUSTOM_DOMAIN, file=sys.stderr)
-AWS_S3_FILE_OVERWRITE = False
-# print("AWS_S3_FILE_OVERWRITE =", AWS_S3_FILE_OVERWRITE, file=sys.stderr)
-AWS_DEFAULT_ACL = None
-# print("AWS_DEFAULT_ACL =", AWS_DEFAULT_ACL, file=sys.stderr)
-# DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-    },
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
 
+else:  # DEVELOPMENT
+    # Local storage settings
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
 
-print("Default Storage: ", default_storage.__class__)
-MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
-
-# STORAGES = {
-#     "default": {
-#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-#         "OPTIONS": {
-#             "access_key": config("AWS_ACCESS_KEY_ID"),
-#             "secret_key": config("AWS_SECRET_ACCESS_KEY"),
-#             "bucket_name": config("AWS_STORAGE_BUCKET_NAME"),
-#             "region_name": config("AWS_S3_REGION_NAME"),
-#             "custom_domain": f"{config('AWS_STORAGE_BUCKET_NAME')}.s3.{config('AWS_S3_REGION_NAME')}.amazonaws.com",
-#             "file_overwrite": False,
-#             "default_acl": None,
-#         },
-#     },
-#     # Optional: separate static files storage
-#     # "staticfiles": {
-#     #     "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
-#     #     "OPTIONS": {...},
-#     # },
-# }
-
-
-# if DEBUG:
-#     DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
-# else:
-#     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+print("Default Storage:", default_storage.__class__)
