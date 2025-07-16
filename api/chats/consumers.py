@@ -18,7 +18,7 @@ from django.db.models.functions import Coalesce
 from PIL import Image, UnidentifiedImageError
 
 from .models import Connection, Message
-from .serializers import ChatSerializer, MessageSerializer
+from .serializers import ConversationSerializer, MessageSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -143,9 +143,10 @@ class ChatConsumer(WebsocketConsumer):
         """Get appropriate handler for message type."""
         handlers = {
             "thumbnail": self._handle_thumbnail_update,
-            "FetchChatsList": self._handle_fetch_chats_list,
+            # "FetchChatsList": self._handle_fetch_chats_list,
+            "fetchConversationsList": self._handle_fetch_conversations,
             "message_send": self._handle_message_send,
-            "fetchMessagesList": self._handle_fetch_messages_list,
+            "fetchChatMessages": self._handle_fetch_chat,
             "message_typing": self._handle_message_typing,
         }
         return handlers.get(message_type)
@@ -210,9 +211,15 @@ class ChatConsumer(WebsocketConsumer):
         serialized = UserSerializer(user)
         self._broadcast_to_user("thumbnail", serialized.data)
 
-    def _handle_fetch_chats_list(self, data):
-        """Fetches the list of chats the user had."""
+    def _handle_fetch_conversations(self, data):
+        """Fetches the list of conversation the user had."""
         user = self.user
+        request_data = data.get("data", {})
+        page = request_data.get("page", 1)
+        page_size = 20
+
+        start = (page - 1) * page_size
+        end = page * page_size + 1  # Fetch one extra to check for next page
 
         # Latest message subquery
         latest_messages = Message.objects.filter(connection=OuterRef("pk")).order_by(
@@ -222,7 +229,7 @@ class ChatConsumer(WebsocketConsumer):
         # Get connections for user
         # annotate allows us to add a pseudo field to our queryset.
         # Coalesce('latest_created', 'updated') allows us to arrange the chats from the latest created message to the latest updated connection
-        connections = (
+        base_qs = (
             Connection.objects.filter(Q(sender=user) | Q(receiver=user))
             .annotate(
                 latest_content=latest_messages.values("content"),
@@ -230,10 +237,30 @@ class ChatConsumer(WebsocketConsumer):
             )
             .order_by(Coalesce("latest_created", "updated").desc())
         )
+        # [page * page_size : (page + 1) * page_size]
+        connections = list(base_qs[start:end])
 
-        serialized = ChatSerializer(connections, context={"user": user}, many=True)
+        serialized = ConversationSerializer(
+            connections, context={"user": user}, many=True
+        )
+
+        # Compute the next page
+        next_page = page + 1 if base_qs.count() > (page + 1) * page_size else None
+
+        has_next = base_qs.count() > page_size
+
         # print('serialized: ', serialized.data)
-        self._broadcast_to_user("chatsList", serialized.data)
+        self._broadcast_to_user(
+            "conversationsList",
+            {
+                "data": serialized.data,
+                "pagination": {
+                    "hasNext": has_next,
+                    "nextPage": next_page,
+                    "loaded": page != 1,
+                },
+            },
+        )
 
     def _handle_message_send(self, data):
         """Handle message send by a user to another user."""
@@ -276,26 +303,35 @@ class ChatConsumer(WebsocketConsumer):
         # Broadcast to the recipient user the message
         self._broadcast_to_recipient(recipient.username, "message_send", data)
 
-    def _handle_fetch_messages_list(self, data):
+    def _handle_fetch_chat(self, data):
         """Fetchs the list of message a user had 2 users had."""
 
         user = self.user
-        ConnectionId = data.get("connectionId")
-        page = data.get("page")
-        page_size = 6
+        request_data = data.get("data", {})
+        ConnectionId = request_data.get("connectionId")
+        page = request_data.get("page")
+        page_size = 30
+
+        print("reach: ", ConnectionId)
 
         try:
-            connection = Connection.objects.get(id=ConnectionId)
+            connection = Connection.objects.get(pk=ConnectionId)
         except Connection.DoesNotExist:
             print("Error: couldn't find connection")
             return
 
-        # Get messages per pagination
-        messages = Message.objects.filter(connection=connection)[
-            page * page_size : (page + 1) * page_size
-        ]
+        start = (page - 1) * page_size
+        end = page * page_size + 1  # Fetch one extra to check for next page
 
-        # [page * page_size:(page + 1) * page_size]
+        # Check if the user is part of the connection
+        # Safeguard against unauthorized access
+        if user not in [connection.sender, connection.receiver]:
+            return self._send_error("Access denied")
+
+        # Get messages per pagination
+        base_qs = Message.objects.filter(connection=connection)
+
+        messages = list(base_qs[start:end])
 
         # print('messages: ', messages)
         # Serialized message
@@ -313,20 +349,25 @@ class ChatConsumer(WebsocketConsumer):
         serialized_friend = UserSerializer(recipient)
 
         # Count the total number of messages for this connection
-        total_messages = Message.objects.filter(connection=connection).count()
+        has_next = base_qs.count() > page_size
 
         # Compute the next page
-        next_page = page + 1 if total_messages > (page + 1) * page_size else None
+        next_page = page + 1 if base_qs.count() > (page + 1) * page_size else None
 
-        # print('Pages:', page, next_page)
         data = {
+            "connectionId": ConnectionId,
             "messages": serialized_messages.data,
-            "next": next_page,
             "friend": serialized_friend.data,
+            "pagination": {
+                "currentPage": page,
+                "hasNext": has_next,
+                "nextPage": next_page,
+                "loaded": page != 1,
+            },
         }
 
         # send back to the requestor
-        self._broadcast_to_user("messagesList", data)
+        self._broadcast_to_user("fetchChatMessages", data)
 
     def _handle_new_connection(self, data):
         sender = self.user

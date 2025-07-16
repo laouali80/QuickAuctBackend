@@ -5,14 +5,23 @@ from rest_framework import serializers
 from .models import Connection, Message
 
 
-class ChatSerializer(serializers.ModelSerializer):
+class ConversationSerializer(serializers.ModelSerializer):
     friend = serializers.SerializerMethodField()
-    preview = serializers.SerializerMethodField()
-    updated = serializers.SerializerMethodField()
+    # sender = UserSerializer(read_only=True)
+    # receiver = UserSerializer(read_only=True)
+    last_message_content = serializers.SerializerMethodField()
+    last_updated = serializers.SerializerMethodField()
 
     class Meta:
         model = Connection
-        fields = ["id", "friend", "preview", "updated"]
+        fields = [
+            "connectionId",
+            "friend",
+            # "sender",
+            # "receiver",
+            "last_message_content",
+            "last_updated",
+        ]
 
     def get_friend(self, obj):
         # if we are the sender/ the one who initiate the connection
@@ -24,7 +33,7 @@ class ChatSerializer(serializers.ModelSerializer):
         else:
             print("Error: No user found in chatSerializer")
 
-    def get_preview(self, obj):
+    def get_last_message_content(self, obj):
         """Return the latest content message"""
         if not obj.latest_content:
             return "New Connection"
@@ -32,7 +41,7 @@ class ChatSerializer(serializers.ModelSerializer):
 
         return latest_content
 
-    def get_updated(self, obj):
+    def get_last_updated(self, obj):
         """Return the latest updated message"""
         date = obj.latest_created or obj.updated
 
@@ -44,7 +53,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ["id", "is_me", "content", "created"]
+        fields = ["id", "is_me", "content", "created", "auction"]
 
     def get_is_me(self, obj):
         return self.context["user"] == obj.user
