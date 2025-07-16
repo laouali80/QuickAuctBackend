@@ -42,7 +42,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = CustomUserManager()
 
     USERNAME_FIELD = "username"  # Used for authentication
-    # REQUIRED_FIELDS = ["email", "first_name", "last_name"]  # Fields required when using createsuperuser
+    REQUIRED_FIELDS = [
+        "email",
+        # "first_name",
+        # "last_name",
+    ]  # Fields required when using createsuperuser
 
     def __str__(self):
         return (
