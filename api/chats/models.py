@@ -60,7 +60,10 @@ class Connection(models.Model):
     @property
     def most_recent_message(self):
         """Get the most recent message in this connection."""
-        return self.messages.order_by("-created").first()
+
+        if not hasattr(self, "_last_message_cache"):
+            self._last_message_cache = self.messages.order_by("-created").first()
+        return self._last_message_cache
 
 
 class Message(models.Model):
@@ -108,12 +111,12 @@ class Message(models.Model):
     def save(self, *args, **kwargs):
         if not self.pk:
             # Update connection timestamp without full save
-            Connection.objects.filter(pk=self.connectionId).update(
+            Connection.objects.filter(pk=self.connection_id).update(
                 updated=timezone.now()
             )
+
         super().save(*args, **kwargs)
 
-    @property
     def is_sender(self, user):
         """Check if given user is the sender of this message."""
         return self.user == user
