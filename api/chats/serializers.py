@@ -1,4 +1,6 @@
 # serializers.py
+
+from api.auctions.serializers import AuctionSerializer
 from api.users.serializers import UserSerializer
 from rest_framework import serializers
 
@@ -35,21 +37,25 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     def get_last_message_content(self, obj):
         """Return the latest content message"""
-        if not obj.latest_content:
-            return "New Connection"
-        latest_content = obj.latest_content
 
-        return latest_content
+        last_message = obj.most_recent_message
+        if not last_message:
+            return "New Connection"
+        return last_message.content
 
     def get_last_updated(self, obj):
         """Return the latest updated message"""
-        date = obj.latest_created or obj.updated
-
-        return date.isoformat()
+        last_message = obj.most_recent_message
+        return (
+            last_message.created.isoformat()
+            if last_message
+            else obj.updated.isoformat()
+        )
 
 
 class MessageSerializer(serializers.ModelSerializer):
     is_me = serializers.SerializerMethodField()
+    auction = AuctionSerializer(read_only=True)
 
     class Meta:
         model = Message
