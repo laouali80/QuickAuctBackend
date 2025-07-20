@@ -5,6 +5,7 @@ import os
 from io import BytesIO
 
 import jwt
+from api.auctions.models import Auction
 from api.users.models import User
 from api.users.serializers import UserSerializer
 from asgiref.sync import async_to_sync
@@ -13,12 +14,13 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.base import ContentFile
+from django.db import transaction
 from django.db.models import OuterRef, Q
 from django.db.models.functions import Coalesce
 from PIL import Image, UnidentifiedImageError
 
 from .models import Connection, Message
-from .serializers import ChatSerializer, MessageSerializer
+from .serializers import ConversationSerializer, MessageSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -143,10 +145,11 @@ class ChatConsumer(WebsocketConsumer):
         """Get appropriate handler for message type."""
         handlers = {
             "thumbnail": self._handle_thumbnail_update,
-            "FetchChatsList": self._handle_fetch_chats_list,
+            "fetchConversationsList": self._handle_fetch_conversations,
             "message_send": self._handle_message_send,
-            "fetchMessagesList": self._handle_fetch_messages_list,
-            "message_typing": self._handle_message_typing,
+            "fetchChatMessages": self._handle_fetch_chat,
+            "message_typing": self._handle_typing_indicator,
+            "new_connection": self._handle_new_connection,
         }
         return handlers.get(message_type)
 
@@ -210,9 +213,15 @@ class ChatConsumer(WebsocketConsumer):
         serialized = UserSerializer(user)
         self._broadcast_to_user("thumbnail", serialized.data)
 
-    def _handle_fetch_chats_list(self, data):
-        """Fetches the list of chats the user had."""
+    def _handle_fetch_conversations(self, data):
+        """Fetches the list of conversation the user had."""
         user = self.user
+        request_data = data.get("data", {})
+        page = request_data.get("page", 1)
+        page_size = 20
+
+        start = (page - 1) * page_size
+        end = page * page_size + 1  # Fetch one extra to check for next page
 
         # Latest message subquery
         latest_messages = Message.objects.filter(connection=OuterRef("pk")).order_by(
@@ -222,7 +231,7 @@ class ChatConsumer(WebsocketConsumer):
         # Get connections for user
         # annotate allows us to add a pseudo field to our queryset.
         # Coalesce('latest_created', 'updated') allows us to arrange the chats from the latest created message to the latest updated connection
-        connections = (
+        base_qs = (
             Connection.objects.filter(Q(sender=user) | Q(receiver=user))
             .annotate(
                 latest_content=latest_messages.values("content"),
@@ -230,27 +239,65 @@ class ChatConsumer(WebsocketConsumer):
             )
             .order_by(Coalesce("latest_created", "updated").desc())
         )
+        # [page * page_size : (page + 1) * page_size]
+        connections = list(base_qs[start:end])
 
-        serialized = ChatSerializer(connections, context={"user": user}, many=True)
+        serialized = ConversationSerializer(
+            connections, context={"user": user}, many=True
+        )
+
+        # Compute the next page
+        next_page = page + 1 if base_qs.count() > (page + 1) * page_size else None
+
+        has_next = base_qs.count() > page_size
+
         # print('serialized: ', serialized.data)
-        self._broadcast_to_user("chatsList", serialized.data)
+        self._broadcast_to_user(
+            "conversationsList",
+            {
+                "data": serialized.data,
+                "pagination": {
+                    "hasNext": has_next,
+                    "nextPage": next_page,
+                    "loaded": page != 1,
+                },
+            },
+        )
 
     def _handle_message_send(self, data):
         """Handle message send by a user to another user."""
         # print(data)
         user = self.user
-        ConnectionId = data.get("connectionId")
-        content = data.get("content")
+        request_data = data.get("data", {})
+        ConnectionId = request_data.get("connectionId")
+        content = request_data.get("content")
+        auctionId = request_data.get("auctionId", False)
+        # print("data: ", data)
+
+        # print(
+        #     f"Message send by {user.username} to connection {ConnectionId}: {content}"
+        # )
 
         try:
-            connection = Connection.objects.get(id=ConnectionId)
+            connection = Connection.objects.get(pk=ConnectionId)
             # print('existing: ',connection)
         except Connection.DoesNotExist:
             print("Error: couldn't find connection")
             return
 
+        # If auctionId is provided, check if the auction exists
+        if auctionId:
+            try:
+                auction = Auction.objects.get(pk=auctionId)
+            except Auction.DoesNotExist:
+                print("Error: couldn't find auction")
+                return
+
         message = Message.objects.create(
-            connection=connection, user=user, content=content
+            connection=connection,
+            user=user,
+            content=content,
+            auction=auction if auctionId else None,
         )
 
         # determine the recipient friend
@@ -262,7 +309,11 @@ class ChatConsumer(WebsocketConsumer):
         serialized_message = MessageSerializer(message, context={"user": user})
 
         serialized_friend = UserSerializer(recipient)
-        data = {"message": serialized_message.data, "friend": serialized_friend.data}
+        data = {
+            "connectionId": ConnectionId,
+            "message": serialized_message.data,
+            "friend": serialized_friend.data,
+        }
 
         # Broadcast to sender user the message
         self._broadcast_to_user("message_send", data)
@@ -271,31 +322,42 @@ class ChatConsumer(WebsocketConsumer):
         serialized_message = MessageSerializer(message, context={"user": recipient})
 
         serialized_friend = UserSerializer(user)
-        data = {"message": serialized_message.data, "friend": serialized_friend.data}
+        data = {
+            "connectionId": ConnectionId,
+            "message": serialized_message.data,
+            "friend": serialized_friend.data,
+        }
 
         # Broadcast to the recipient user the message
         self._broadcast_to_recipient(recipient.username, "message_send", data)
 
-    def _handle_fetch_messages_list(self, data):
+    def _handle_fetch_chat(self, data):
         """Fetchs the list of message a user had 2 users had."""
 
         user = self.user
-        ConnectionId = data.get("connectionId")
-        page = data.get("page")
-        page_size = 6
+        request_data = data.get("data", {})
+        ConnectionId = request_data.get("connectionId")
+        page = request_data.get("page")
+        page_size = 30
 
         try:
-            connection = Connection.objects.get(id=ConnectionId)
+            connection = Connection.objects.get(pk=ConnectionId)
         except Connection.DoesNotExist:
             print("Error: couldn't find connection")
             return
 
-        # Get messages per pagination
-        messages = Message.objects.filter(connection=connection)[
-            page * page_size : (page + 1) * page_size
-        ]
+        start = (page - 1) * page_size
+        end = page * page_size + 1  # Fetch one extra to check for next page
 
-        # [page * page_size:(page + 1) * page_size]
+        # Check if the user is part of the connection
+        # Safeguard against unauthorized access
+        if user not in [connection.sender, connection.receiver]:
+            return self._send_error("Access denied")
+
+        # Get messages per pagination
+        base_qs = Message.objects.filter(connection=connection)
+
+        messages = list(base_qs[start:end])
 
         # print('messages: ', messages)
         # Serialized message
@@ -313,83 +375,118 @@ class ChatConsumer(WebsocketConsumer):
         serialized_friend = UserSerializer(recipient)
 
         # Count the total number of messages for this connection
-        total_messages = Message.objects.filter(connection=connection).count()
+        has_next = base_qs.count() > page_size
 
         # Compute the next page
-        next_page = page + 1 if total_messages > (page + 1) * page_size else None
+        next_page = page + 1 if base_qs.count() > (page + 1) * page_size else None
 
-        # print('Pages:', page, next_page)
         data = {
+            "connectionId": ConnectionId,
             "messages": serialized_messages.data,
-            "next": next_page,
             "friend": serialized_friend.data,
+            "pagination": {
+                "currentPage": page,
+                "hasNext": has_next,
+                "nextPage": next_page,
+                "loaded": page != 1,
+            },
         }
 
         # send back to the requestor
-        self._broadcast_to_user("messagesList", data)
+        self._broadcast_to_user("fetchChatMessages", data)
 
     def _handle_new_connection(self, data):
         sender = self.user
-        receiver_id = data.get("receiver_id")
-        content = data.get("content")
+        request_data = data.get("data", {})
+        receiver_id = request_data.get("receiver_id")
+        content = request_data.get("content", "").strip()
+        auction_id = request_data.get("auctionId")  # Optional
 
-        #   # Create connection and first message for perfomance
-        # with transaction.atomic():
-        #     connection = Connection.objects.create(
-        #         sender=sender,
-        #         receiver=receiver
-        #     )
-
-        #     message = Message.objects.create(
-        #         connection=connection,
-        #         user=sender,
-        #         content=content
-        #     )
+        if not receiver_id or not content:
+            self._send_error("Receiver ID and content are required.")
+            return
 
         try:
             receiver = User.objects.get(pk=receiver_id)
-            try:
-                new_connection = Connection.objects.create(
-                    sender=sender, receiver=receiver
-                )
-            except Exception as e:
-                logger.error(f"Error creating connection: {str(e)}")
-                self._send_error("Failed to create connection")
         except User.DoesNotExist:
-            logger.error(f"Receiver {receiver_id} not found")
-            self._send_error("Recipient user not found")
+            logger.error(f"Receiver with ID {receiver_id} not found.")
+            self._send_error("Recipient user not found.")
+            return
 
-        message = Message.objects.create(
-            connection=new_connection, user=sender, content=content
+        # 🚫 Check for existing connection (sender <-> receiver or receiver <-> sender)
+        existing_connection = Connection.objects.filter(
+            Q(sender=sender, receiver=receiver) | Q(sender=receiver, receiver=sender)
+        ).first()
+
+        if existing_connection:
+            logger.info(f"Connection already exists between {sender} and {receiver}")
+            # Optional: Send a notice instead of creating
+            self._send_error("Connection already exists.")
+            return
+
+        try:
+            with transaction.atomic():
+                connection = Connection.objects.create(sender=sender, receiver=receiver)
+
+                message = Message.objects.create(
+                    connection=connection,
+                    user=sender,
+                    content=content,
+                    auction_id=auction_id if auction_id else None,
+                )
+        except Exception as e:
+            logger.error(f"Failed to create connection or message: {str(e)}")
+            self._send_error("Could not create new connection.")
+            return
+
+        # 🔄 Broadcast setup
+        message_for_sender = MessageSerializer(message, context={"user": sender}).data
+        message_for_receiver = MessageSerializer(
+            message, context={"user": receiver}
+        ).data
+
+        connection_for_sender = ConversationSerializer(
+            connection, context={"user": sender}
+        ).data
+        connection_for_receiver = ConversationSerializer(
+            connection, context={"user": receiver}
+        ).data
+
+        friend_for_sender = UserSerializer(receiver).data
+        friend_for_receiver = UserSerializer(sender).data
+
+        # Notify sender
+        self._broadcast_to_user(
+            "new_connection",
+            {
+                "connection": connection_for_sender,
+                "message": message_for_sender,
+                "friend": friend_for_sender,
+            },
         )
 
-        # send new message back to sender
-        serialized_message = MessageSerializer(message, context={"user": sender})
+        # Notify receiver
+        self._broadcast_to_recipient(
+            receiver.username,
+            "new_connection",
+            {
+                "connection": connection_for_receiver,
+                "message": message_for_receiver,
+                "friend": friend_for_receiver,
+            },
+        )
 
-        serialized_friend = UserSerializer(receiver)
-        data = {"message": serialized_message.data, "friend": serialized_friend.data}
-
-        # Broadcast to sender user the message
-        self._broadcast_to_user("new_connection", data)
-
-        # send new message to receiver
-        serialized_message = MessageSerializer(message, context={"user": receiver})
-
-        serialized_friend = UserSerializer(sender)
-        data = {"message": serialized_message.data, "friend": serialized_friend.data}
-
-        # Broadcast to the recipient user the message
-        self._broadcast_to_recipient(receiver.username, "new_connection", data)
-
-    def _handle_message_typing(self, data):
+    def _handle_typing_indicator(self, data):
         """Handle the message typing animation."""
 
         user = self.user
-        recipient_username = data.get("username")
+        request_data = data.get("data", {})
+        ConnectionId = request_data.get("connectionId")
+        recipient_username = request_data.get("username")
 
-        data = {"username": user.username}
+        data = {"username": user.username, "connectionId": ConnectionId}
 
-        self._broadcast_to_recipient(recipient_username, "message_typing", data)
+        self._broadcast_to_recipient(recipient_username, "typingIndicator", data)
 
     # ----------------------
     #  Response Methods

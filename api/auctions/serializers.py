@@ -9,7 +9,6 @@ from api.auctions.models import (
 )
 from api.users.serializers import UserSerializer
 from django.db import IntegrityError
-from django.utils import timezone
 from rest_framework import serializers
 
 from .utils import ConvertEndingTime
@@ -69,8 +68,7 @@ class BidSerializer(serializers.ModelSerializer):
     def get_isCurrentUser(self, obj):
         user = self.context.get("user")
         if user and user.is_authenticated:
-            print("obj.bidder: ", obj.bidder)
-            print("user: ", user)
+
             return obj.bidder == user
         return False
 

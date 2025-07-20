@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Auction, Category, AuctionImage
+from .models import Auction, Category
 from .serializers import (
     AuctionCreateSerializer,
     AuctionReportSerializer,
@@ -122,7 +122,8 @@ def delete_auction(request, auctId):
 
     _handle_delete_auction(auction)
     return Response(
-        {"message": "Auction and its images deleted successfully"}, status=status.HTTP_204_NO_CONTENT
+        {"message": "Auction and its images deleted successfully"},
+        status=status.HTTP_204_NO_CONTENT,
     )
 
 

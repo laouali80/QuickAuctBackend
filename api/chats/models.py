@@ -1,6 +1,10 @@
+import uuid
+
+from api.auctions.models import Auction
 from api.users.models import User
 from django.core.validators import MinLengthValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 # Create your models here.
@@ -19,6 +23,13 @@ class Connection(models.Model):
             models.Index(fields=["updated"]),
         ]
 
+    connectionId = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        auto_created=True,
+        verbose_name=_("Connection ID"),
+    )
     sender = models.ForeignKey(
         User,
         related_name="sent_connections",
@@ -34,8 +45,11 @@ class Connection(models.Model):
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Last Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Creation Date"))
 
+    # def __str__(self):
+    #     return f"{self.sender.username} → {self.receiver.username}"
+
     def __str__(self):
-        return f"{self.sender.username} → {self.receiver.username}"
+        return f"Connection({self.connectionId})"
 
     def save(self, *args, **kwargs):
         # Prevent self-connections
@@ -46,7 +60,10 @@ class Connection(models.Model):
     @property
     def most_recent_message(self):
         """Get the most recent message in this connection."""
-        return self.messages.order_by("-created").first()
+
+        if not hasattr(self, "_last_message_cache"):
+            self._last_message_cache = self.messages.order_by("-created").first()
+        return self._last_message_cache
 
 
 class Message(models.Model):
@@ -60,6 +77,7 @@ class Message(models.Model):
             models.Index(fields=["connection", "created"]),
         ]
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     connection = models.ForeignKey(
         Connection,
         related_name="messages",
@@ -76,17 +94,29 @@ class Message(models.Model):
         validators=[MinLengthValidator(1)], verbose_name=_("Message Text")
     )
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Creation Date"))
+    auction = models.ForeignKey(
+        Auction,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="referenced_messages",
+    )
+
+    # def __str__(self):
+    #     return f"{self.user.username}: {self.content[:30]}..."
 
     def __str__(self):
-        return f"{self.user.username}: {self.content[:30]}..."
+        return f"Message({self.id})"
 
     def save(self, *args, **kwargs):
-        # Update connection timestamp when new message is sent
-        if not self.pk:  # Only on creation
-            self.connection.save()  # Triggers connection's auto_now
+        if not self.pk:
+            # Update connection timestamp without full save
+            Connection.objects.filter(pk=self.connection_id).update(
+                updated=timezone.now()
+            )
+
         super().save(*args, **kwargs)
 
-    @property
     def is_sender(self, user):
         """Check if given user is the sender of this message."""
         return self.user == user
