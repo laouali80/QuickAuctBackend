@@ -150,6 +150,7 @@ class ChatConsumer(WebsocketConsumer):
             "fetchChatMessages": self._handle_fetch_chat,
             "message_typing": self._handle_typing_indicator,
             "new_connection": self._handle_new_connection,
+            "read_messages": self._handle_read_messages,
         }
         return handlers.get(message_type)
 
@@ -338,7 +339,7 @@ class ChatConsumer(WebsocketConsumer):
         request_data = data.get("data", {})
         ConnectionId = request_data.get("connectionId")
         page = request_data.get("page")
-        page_size = 30
+        page_size = 12
 
         try:
             connection = Connection.objects.get(pk=ConnectionId)
@@ -347,7 +348,7 @@ class ChatConsumer(WebsocketConsumer):
             return
 
         start = (page - 1) * page_size
-        end = page * page_size + 1  # Fetch one extra to check for next page
+        end = page * page_size
 
         # Check if the user is part of the connection
         # Safeguard against unauthorized access
@@ -374,12 +375,14 @@ class ChatConsumer(WebsocketConsumer):
         # Serialize friend
         serialized_friend = UserSerializer(recipient)
 
+        total_count = base_qs.count()
+
         # Count the total number of messages for this connection
-        has_next = base_qs.count() > page_size
-
+        has_next = total_count > end
         # Compute the next page
-        next_page = page + 1 if base_qs.count() > (page + 1) * page_size else None
+        next_page = page + 1 if has_next else None
 
+        # print("base_qs.count(): ", base_qs.count())
         data = {
             "connectionId": ConnectionId,
             "messages": serialized_messages.data,
@@ -487,6 +490,36 @@ class ChatConsumer(WebsocketConsumer):
         data = {"username": user.username, "connectionId": ConnectionId}
 
         self._broadcast_to_recipient(recipient_username, "typingIndicator", data)
+
+    def _handle_read_messages(self, data):
+        """Handle marking messages as read."""
+        user = self.user
+        request_data = data.get("data", {})
+        connection_id = request_data.get("connectionId")
+
+        try:
+            connection = Connection.objects.get(pk=connection_id)
+        except Connection.DoesNotExist:
+            logger.error(f"Connection with ID {connection_id} not found.")
+            self._send_error("Connection not found.")
+            return
+
+        # Check if the user is part of the connection
+        if user not in [connection.sender, connection.receiver]:
+            return self._send_error("Access denied")
+
+        # Mark all unread messages as read
+        unread_messages = connection.messages.filter(isRead=False, user__is_active=True)
+        unread_messages.update(isRead=True)
+
+        # # Notify both users about the read status
+        # data = {
+        #     "connectionId": connection_id,
+        #     "readBy": user.username,
+        #     "unreadCount": 0,  # All messages are now read
+        # }
+
+        self._broadcast_to_user("mark_read_messages", {})
 
     # ----------------------
     #  Response Methods

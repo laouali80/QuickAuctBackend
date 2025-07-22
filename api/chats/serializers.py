@@ -13,6 +13,7 @@ class ConversationSerializer(serializers.ModelSerializer):
     # receiver = UserSerializer(read_only=True)
     last_message_content = serializers.SerializerMethodField()
     last_updated = serializers.SerializerMethodField()
+    unreadCount = serializers.SerializerMethodField()
 
     class Meta:
         model = Connection
@@ -23,6 +24,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             # "receiver",
             "last_message_content",
             "last_updated",
+            "unreadCount",
         ]
 
     def get_friend(self, obj):
@@ -51,6 +53,13 @@ class ConversationSerializer(serializers.ModelSerializer):
             if last_message
             else obj.updated.isoformat()
         )
+
+    def get_unreadCount(self, obj):
+        """Return the count of unread messages not sent by current user."""
+        user = self.context.get("user")
+        if user:
+            return obj.get_unread_count(user)
+        return 0
 
 
 class MessageSerializer(serializers.ModelSerializer):

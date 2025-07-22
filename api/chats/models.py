@@ -61,9 +61,16 @@ class Connection(models.Model):
     def most_recent_message(self):
         """Get the most recent message in this connection."""
 
-        if not hasattr(self, "_last_message_cache"):
-            self._last_message_cache = self.messages.order_by("-created").first()
-        return self._last_message_cache
+        return self.messages.order_by("-created").first()
+
+    def get_unread_count(self, current_user):
+        """Count unread messages not sent by the current user."""
+
+        return (
+            self.messages.filter(isRead=False, user__is_active=True)
+            .exclude(user=current_user)
+            .count()
+        )
 
 
 class Message(models.Model):
@@ -93,6 +100,7 @@ class Message(models.Model):
     content = models.TextField(
         validators=[MinLengthValidator(1)], verbose_name=_("Message Text")
     )
+    isRead = models.BooleanField(default=False, verbose_name=_("Is Read"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Creation Date"))
     auction = models.ForeignKey(
         Auction,
