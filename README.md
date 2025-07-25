@@ -137,3 +137,9 @@ aws s3
 https://www.youtube.com/watch?v=-DU6Y-x-2MA
 
 https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#settings
+
+railway
+https://www.youtube.com/watch?v=AjKhxWgGpjY
+
+railway postgres debug
+https://stackoverflow.com/questions/78777419/django-db-utils-operationalerror-could-not-translate-host-name-postgres-railwa
