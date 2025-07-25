@@ -47,6 +47,7 @@ SECRET_KEY = config("SECRET_KEY")
 # ]
 
 ALLOWED_HOSTS = [
+    "quickauctbackend-production.up.railway.app",
     ".vercel.app",
     "localhost",
     "10.0.2.2",
@@ -58,6 +59,7 @@ ALLOWED_HOSTS = [
 
 
 CORS_ALLOWED_ORIGINS = [
+    "https://quickauctbackend-production.up.railway.app",
     "http://localhost:8081",
 ]
 
@@ -131,7 +133,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -175,7 +176,7 @@ WSGI_APPLICATION = "auctionBackend.wsgi.application"
 
 DEBUG = True
 
-
+print("url: ", config("DB_URL"))
 if ENVIRONMENT == "DEVELOPMENT":
     # DEBUG = True
     DATABASES = {
@@ -186,6 +187,7 @@ if ENVIRONMENT == "DEVELOPMENT":
     }
 else:
     # DEBUG = False
+    # DATABASES["default"] = dj_database_url.parse(config("DB_URL"))
     DATABASES = {
         "default": dj_database_url.parse(
             config("DB_URL"),
