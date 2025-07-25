@@ -194,6 +194,9 @@ if ENVIRONMENT == "DEVELOPMENT":
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+    # Optional: Local Redis config (if using Redis locally)
+    REDIS_URL = "redis://127.0.0.1:6379/0"
 else:
     # DEBUG = False
     # DATABASES["default"] = dj_database_url.parse(config("DB_URL"))
@@ -205,6 +208,7 @@ else:
             conn_max_age=600,
         )
     }
+    REDIS_URL = config("REDIS_URL")  # Set this in your Railway environment variables
     # DATABASES = {
     #     'default': {
     #         'ENGINE': os.getenv('DB_ENGINE'),
