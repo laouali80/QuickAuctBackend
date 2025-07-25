@@ -63,11 +63,20 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://quickauctbackend-production.up.railway.app",
+]
+
+CSRF_COOKIE_SECURE = ENVIRONMENT != "DEVELOPMENT"
+
+
 CORS_ALLOW_CREDENTIALS = True
 # CORS_ALLOW_ALL_ORIGINS = True  # for testing only
 
 SESSION_COOKIE_SAMESITE = "Lax"  # or "None" if accessing from a different domain
-SESSION_COOKIE_SECURE = False  # must be False for HTTP (local dev)
+SESSION_COOKIE_SECURE = (
+    ENVIRONMENT != "DEVELOPMENT"
+)  # must be False for HTTP (local dev)
 
 # Daphne
 ASGI_APPLICATION = "auctionBackend.asgi.application"
