@@ -10,8 +10,6 @@ https://docs.djangoproject.com/en/5.1/howto/deployment/asgi/
 import os
 
 import django
-from api.auctions import routing as auctions_routing
-from api.chats import routing as chats_routing
 
 # Import both routing modules
 from channels.routing import ProtocolTypeRouter, URLRouter
@@ -25,6 +23,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "auctionBackend.settings")
 # ✅ Setup Django before importing models or routing
 django.setup()
 
+
+# ✅ Only after django.setup(), import anything that touches models or routing
+from api.auctions import routing as auctions_routing
+from api.chats import routing as chats_routing
 
 # Combine all websocket routes
 websocket_urlpatterns = (
