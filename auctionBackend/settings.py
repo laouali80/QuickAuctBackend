@@ -82,14 +82,27 @@ SESSION_COOKIE_SECURE = (
 ASGI_APPLICATION = "auctionBackend.asgi.application"
 
 # Channels config
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],  # Use your Redis host and port
+if ENVIRONMENT == "DEVELOPMENT":
+    # Local Redis config (if using Redis locally)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("127.0.0.1", 6379)],
+            },
         },
-    },
-}
+    }
+else:
+    # Production Redis config (Railway or other cloud provider)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [config("REDIS_URL")],
+            },
+        },
+    }
+
 
 # profile picture media config
 
@@ -185,7 +198,6 @@ WSGI_APPLICATION = "auctionBackend.wsgi.application"
 
 DEBUG = True
 
-print("url: ", config("DB_URL"))
 if ENVIRONMENT == "DEVELOPMENT":
     # DEBUG = True
     DATABASES = {
@@ -194,6 +206,8 @@ if ENVIRONMENT == "DEVELOPMENT":
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+
 else:
     # DEBUG = False
     # DATABASES["default"] = dj_database_url.parse(config("DB_URL"))
@@ -205,6 +219,7 @@ else:
             conn_max_age=600,
         )
     }
+
     # DATABASES = {
     #     'default': {
     #         'ENGINE': os.getenv('DB_ENGINE'),
