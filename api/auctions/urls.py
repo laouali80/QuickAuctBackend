@@ -10,4 +10,5 @@ urlpatterns = [
     path("reports/", views.auction_report, name="Report Auction"),
     path("<str:auctId>/delete/", views.delete_auction, name="delete_auction"),
     path("<str:auctId>/update/", views.update_auction, name="update_auction"),
+    path("server-time/", views.server_time, name="server_time"),
 ]

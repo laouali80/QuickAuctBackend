@@ -170,6 +170,7 @@ class AuctionConsumer(WebsocketConsumer):
             "likesAuctions": self._handle_fetch_likes_auctions,
             "bidsAuctions": self._handle_fetch_bids_auctions,
             "salesAuctions": self._handle_fetch_sales_auctions,
+            "my_auctions": self._handle_my_auctions,
         }
         return handlers.get(message_type)
 
@@ -210,7 +211,7 @@ class AuctionConsumer(WebsocketConsumer):
         posting_time = request_data.get("postingTime")
 
         page = request_data.get("page", 1)
-        page_size = 5
+        page_size = 10
         start = (page - 1) * page_size
         end = page * page_size + 1  # Fetch one extra to detect next page
 
@@ -274,7 +275,7 @@ class AuctionConsumer(WebsocketConsumer):
         images = data.pop("image", [])
 
         count = Auction.objects.filter(seller=user).count()
-        print("count: ", count)
+        # print("count: ", count)
         if count >= self.AUCTION_LIMIT:
             return ValueError("Auction limit reached")
 
@@ -472,7 +473,7 @@ class AuctionConsumer(WebsocketConsumer):
         user = self.user
         request_data = data.get("data", {})
         page = request_data.get("page", 1)
-        page_size = 5
+        page_size = 10
 
         start = (page - 1) * page_size
         end = page * page_size + 1  # Fetch one extra to check for next page
@@ -507,7 +508,7 @@ class AuctionConsumer(WebsocketConsumer):
         user = self.user
         request_data = data.get("data", {})
         page = request_data.get("page", 1)
-        page_size = 5
+        page_size = 10
 
         start = (page - 1) * page_size
         end = page * page_size + 1  # Fetch one extra to check for next page
@@ -544,7 +545,7 @@ class AuctionConsumer(WebsocketConsumer):
         user = self.user
         request_data = data.get("data", {})
         page = request_data.get("page", 1)
-        page_size = 5
+        page_size = 10
 
         start = (page - 1) * page_size
         end = page * page_size + 1  # Fetch one extra to check for next page
@@ -682,6 +683,10 @@ class AuctionConsumer(WebsocketConsumer):
         user = self.user
         data = data.get("data", {})
         auction_id = data.get("auction_id")
+        reopen_data = data.get("auction", {})
+
+        print("reopen data: ", reopen_data)
+        images = reopen_data.pop("image", [])
 
         if not auction_id:
             self._send_error("No auction_id provided")
@@ -698,33 +703,102 @@ class AuctionConsumer(WebsocketConsumer):
             self._send_error("Only the seller can reopen the auction")
             return
 
-        # Check if auction can be reopened
-        if auction.status != Auction.Status.CANCELLED:
-            self._send_error("Only cancelled auctions can be reopened")
-            return
-
-        # Check if auction has ended naturally
-        if auction.has_ended:
-            self._send_error("Cannot reopen auction that has ended")
-            return
+        if not isinstance(images, list):
+            raise ValueError("Image data must be a list")
+        if len(images) > 3:
+            raise ValueError("You can upload a maximum of 3 images")
 
         try:
-            # Reopen the auction
-            auction.status = Auction.Status.ONGOING
-            auction.save()
+            with transaction.atomic():
+                # Update status to ongoing
+                auction.status = Auction.Status.ONGOING
+                auction.save()
 
-            # Serialize and broadcast the updated auction
-            broadcast_data = AuctionSerializer(auction, context={"user": user}).data
+                serializer = AuctionUpdateSerializer(
+                    auction, data=reopen_data, context={"user": user}, partial=True
+                )
+                if not serializer.is_valid():
+                    self._send_error(
+                        "Auction validation failed: " + str(serializer.errors)
+                    )
+                    return
 
-            self._broadcast_group("auction_reopened", broadcast_data)
-            self._broadcast_to_user(
-                "reopen_auction_success",
-                {"message": "Auction reopened successfully", "auction": broadcast_data},
-            )
+                updated_auction = serializer.save()
 
+                # Track current images and changes
+                old_images = list(AuctionImage.objects.filter(auction=auction))
+                # new_image_urls = [img.get("uri") for img in images if img.get("uri")]
+                images_to_keep = []
+                base64_images = []
+
+                for img_data in images:
+                    uri = img_data.get("uri", "")
+                    if uri.startswith("/media/auction_images"):
+                        # Keep the image if it's one of the old ones
+                        images_to_keep.append(uri)
+                    elif uri.startswith("data:image"):
+                        base64_images.append(img_data)
+                    else:
+                        raise ValueError(f"Invalid image format: {uri}")
+
+                # Delete removed old images
+                for old_img in old_images:
+                    if old_img.image.url not in images_to_keep:
+                        old_img.image.delete(save=False)  # delete file from storage
+                        old_img.delete()
+
+                # Save new base64 images
+                for idx, img_data in enumerate(base64_images):
+                    try:
+                        base64_data = img_data.get("uri").split(",")[1]
+                        image_data = base64.b64decode(base64_data)
+                    except Exception as e:
+                        raise ValueError(f"Invalid base64 image at index {idx}: {e}")
+
+                    image_file = ContentFile(image_data, name=img_data.get("fileName"))
+                    AuctionImage.objects.create(
+                        auction=updated_auction,
+                        image=image_file,
+                        is_primary=(
+                            idx == 0 and not images_to_keep
+                        ),  # primary only if first new image
+                    )
+
+                # Broadcast result
+                broadcast_data = AuctionSerializer(
+                    updated_auction, context={"user": user}
+                ).data
+
+                self._broadcast_group("auction_reopened", broadcast_data)
+                self._broadcast_to_user(
+                    "reopen_auction_success",
+                    {
+                        "message": "Auction reopened successfully",
+                        "auction": broadcast_data,
+                    },
+                )
         except Exception as e:
             logger.error(f"Error reopening auction: {str(e)}")
             self._send_error(f"Failed to reopen auction: {str(e)}")
+
+    def _handle_my_auctions(self, data):
+        """Fetch auctions created by the user."""
+        user = self.user
+        # request_data = data.get("data", {})
+        # page = request_data.get("page", 1)
+        # page_size = 5
+
+        # start = (page - 1) * page_size
+        # end = page * page_size + 1
+
+        auctions = Auction.objects.filter(seller=user)
+
+        # Serialize and broadcast the updated auction
+        broadcast_data = AuctionSerializer(
+            auctions, context={"user": user}, many=True
+        ).data
+
+        self._broadcast_to_user("my_auctions", {"auctions": broadcast_data})
 
     def _handle_report_user(self, data):
         pass

@@ -1,4 +1,6 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.utils.timezone import localtime
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import ValidationError
@@ -201,3 +203,10 @@ def auction_report(request):
             {"status": "warning", "message": message},
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def server_time(request):
+    """Get the current server time in milliseconds."""
+    return Response({"server_time": localtime(timezone.now()).timestamp() * 1000})
