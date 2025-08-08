@@ -26,9 +26,10 @@ class UserSerializer(serializers.ModelSerializer):
         ]
 
     def get_name(self, obj):
-        full_name = (
-            f"{obj.first_name.title() or ''} {obj.last_name.title() or ''}".strip()
-        )
+        first_name = obj.first_name.title() if obj.first_name else ""
+        last_name = obj.last_name.title() if obj.last_name else ""
+        full_name = f"{first_name} {last_name}".strip()
+
         return full_name if full_name else obj.username
 
 
